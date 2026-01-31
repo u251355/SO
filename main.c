@@ -93,43 +93,37 @@ long sumText(int fd, int bufferSize) {
     return sum;
 }
 
-/* ==========================================================
-   MAIN PROGRAM
-   ========================================================== */
+
 int main(int argc, char *argv[]) {
 
-    if (argc != 4) {
+    if (argc != 4) { // check if the number of command arguments are correct
         printf("Usage: %s binary|text pathToFile bufferSize\n", argv[0]);
         return 1;
     }
 
-    char *mode = argv[1];
-    char *filePath = argv[2];
-    int bufferSize = atoi(argv[3]);
-
-    int fd = open(filePath, O_RDONLY);
-    if (fd < 0) {
+    char *mode = argv[1]; // the first argument mode (binary or text)
+    char *filePath = argv[2]; // the second argument: path to the input file
+    int bufferSize = atoi(argv[3]); //  the third argument: buffer size 
+    int fd = open(filePath, O_RDONLY); // open the file in read only mode
+    if (fd < 0) {  //if the file can't not be opened exits
         perror("open");
         return 1;
     }
 
-    long result;
-
-    if (strcmp(mode, "binary") == 0) {
+    long result; // variable to store the final result
+    if (strcmp(mode, "binary") == 0) {  // if binary mode
         result = sumBinary(fd, bufferSize);
 
-    } else if (strcmp(mode, "text") == 0) {
+    } else if (strcmp(mode, "text") == 0) { // if text mode
         result = sumText(fd, bufferSize);
 
-    } else {
+    } else { // if  neither binary or text
         printf("Error: mode must be 'binary' or 'text'\n");
         close(fd);
         return 1;
     }
 
-    close(fd);
-
-    printf("SUM = %ld\n", result);
-
+    close(fd); // close the file
+    printf("SUM = %ld\n", result); // print the final sum
     return 0;
 }
