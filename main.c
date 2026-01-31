@@ -62,7 +62,7 @@ long sumText(int fd, int bufferSize) {
 
             if (bytesRead == 0) {
                 reachedEOF = 1;
-            } else {
+            } else  {
                 for (int i = 0; i < bytesRead; i++) {
                     if (buffer_free_bytes(&cb) > 0)
                         buffer_push(&cb, temp[i]);
