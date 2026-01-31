@@ -35,6 +35,7 @@ long sumText(int fd, int bufferSize) {
 
     CircularBuffer cb;
     buffer_init(&cb, bufferSize);
+
     char *temp = malloc(bufferSize);
     if (!temp) {
         perror("malloc");
@@ -46,14 +47,14 @@ long sumText(int fd, int bufferSize) {
 
     while (!reachedEOF || buffer_used_bytes(&cb) > 0) {
 
-        /* ---- Read more data if not EOF ---- */
+        /* ---- Read new block ---- */
         if (!reachedEOF && buffer_free_bytes(&cb) > 0) {
 
             int bytesRead = read(fd, temp, bufferSize);
 
             if (bytesRead == 0) {
-                reachedEOF = 1;
-            } else  {
+                reachedEOF = 1;  // EOF reached
+            } else {
                 for (int i = 0; i < bytesRead; i++) {
                     if (buffer_free_bytes(&cb) > 0)
                         buffer_push(&cb, temp[i]);
@@ -63,6 +64,7 @@ long sumText(int fd, int bufferSize) {
 
         /* ---- Extract complete numbers ---- */
         int elemSize = buffer_size_next_element(&cb, ',', reachedEOF);
+
         while (elemSize != -1) {
 
             char numberStr[elemSize + 1];
@@ -72,19 +74,25 @@ long sumText(int fd, int bufferSize) {
             }
 
             numberStr[elemSize] = '\0';
-            // Remove comma if present
+
+            // Remove comma if it exists
             if (numberStr[elemSize - 1] == ',')
                 numberStr[elemSize - 1] = '\0';
-            int num = atoi(numberStr);
-            sum += num;
+
+            // Convert and add
+            if (strlen(numberStr) > 0)
+                sum += atoi(numberStr);
+
             elemSize = buffer_size_next_element(&cb, ',', reachedEOF);
         }
     }
 
     free(temp);
     buffer_deallocate(&cb);
+
     return sum;
 }
+
 
 
 int main(int argc, char *argv[]) {
