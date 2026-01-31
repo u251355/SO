@@ -3,36 +3,29 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
-
 #include "circularBuffer.h"
 
-/* ==========================================================
-   BINARY MODE: read integers directly
-   ========================================================== */
-long sumBinary(int fd, int bufferSize) {
+long sumBinary(int fd, int bufferSize) { //function to sum all integers from a binary file
 
-    // Adjust buffer size to multiple of int
-    bufferSize -= bufferSize % sizeof(int);
-
+    bufferSize -= bufferSize % sizeof(int); // allocate memory to store data read from file
     int *buffer = malloc(bufferSize);
-    if (!buffer) {
+    if (!buffer) {  // if malloc failed exit
         perror("malloc");
         exit(1);
     }
 
-    long sum = 0;
-    int bytesRead;
+    long sum = 0; // variable that stores the final sum
+    int bytesRead; // variable to store how many bytes read from file
 
-    while ((bytesRead = read(fd, buffer, bufferSize)) > 0) {
+    while ((bytesRead = read(fd, buffer, bufferSize)) > 0) { // read from the file while there is still data
 
-        int count = bytesRead / sizeof(int);
-
-        for (int i = 0; i < count; i++) {
+        int count = bytesRead / sizeof(int);// how many integers were actually read
+        for (int i = 0; i < count; i++) { // add each integer in the buffer to the sum
             sum += buffer[i];
         }
     }
 
-    free(buffer);
+    free(buffer); // free allocated memory and return the sum
     return sum;
 }
 
