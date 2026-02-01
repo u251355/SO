@@ -14,7 +14,7 @@ long sumBinary(int fd, int bufferSize) { //function to sum all integers from a b
         exit(1);
     }
 
-    long sum = 0; // variable that stores the final sum
+    int sum = 0; // variable that stores the final sum
     int bytesRead; // variable to store how many bytes read from file
 
     while ((bytesRead = read(fd, buffer, bufferSize)) > 0) { // read from the file while there is still data
