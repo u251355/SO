@@ -34,7 +34,9 @@ long sumBinary(int fd, int bufferSize) { //function to sum all integers from a b
 long sumText(int fd, int bufferSize) {
 
     CircularBuffer cb;
-    buffer_init(&cb, bufferSize);
+
+    // Circular buffer larger than read buffer
+    buffer_init(&cb, bufferSize * 4);
 
     char *temp = malloc(bufferSize);
     if (!temp) {
@@ -47,22 +49,21 @@ long sumText(int fd, int bufferSize) {
 
     while (!reachedEOF || buffer_used_bytes(&cb) > 0) {
 
-        /* ---- Read new block ---- */
-        if (!reachedEOF && buffer_free_bytes(&cb) > 0) {
+        // Read block if not EOF
+        if (!reachedEOF) {
 
             int bytesRead = read(fd, temp, bufferSize);
 
             if (bytesRead == 0) {
-                reachedEOF = 1;  // EOF reached
+                reachedEOF = 1;
             } else {
                 for (int i = 0; i < bytesRead; i++) {
-                    if (buffer_free_bytes(&cb) > 0)
-                        buffer_push(&cb, temp[i]);
+                    buffer_push(&cb, temp[i]);
                 }
             }
         }
 
-        /* ---- Extract complete numbers ---- */
+        // Extract complete numbers
         int elemSize = buffer_size_next_element(&cb, ',', reachedEOF);
 
         while (elemSize != -1) {
@@ -75,13 +76,12 @@ long sumText(int fd, int bufferSize) {
 
             numberStr[elemSize] = '\0';
 
-            // Remove comma if it exists
+            // Remove comma if present
             if (numberStr[elemSize - 1] == ',')
                 numberStr[elemSize - 1] = '\0';
 
-            // Convert and add
             if (strlen(numberStr) > 0)
-                sum += atoi(numberStr);
+                sum += atol(numberStr);
 
             elemSize = buffer_size_next_element(&cb, ',', reachedEOF);
         }
@@ -92,7 +92,6 @@ long sumText(int fd, int bufferSize) {
 
     return sum;
 }
-
 
 
 int main(int argc, char *argv[]) {
