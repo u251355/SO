@@ -44,7 +44,7 @@ long sumText(int fd, int bufferSize) {
         exit(1);
     }
 
-    long sum = 0;
+    int sum = 0;
     int reachedEOF = 0;
 
     while (!reachedEOF || buffer_used_bytes(&cb) > 0) {
