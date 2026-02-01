@@ -1,3 +1,4 @@
 #!/bin/bash
 
-gcc -o main main.c circularBuffer.c
+gcc -o main src/main.c src/circularBuffer.c
+
