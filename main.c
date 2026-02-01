@@ -28,69 +28,50 @@ long sumBinary(int fd, int bufferSize) { //function to sum all integers from a b
     return sum;
 }
 
-/* ==========================================================
-   TEXT MODE: CSV with circular buffer
-   ========================================================== */
-long sumText(int fd, int bufferSize) {
 
+long sumText(int fd, int bufferSize) { //function to sum all integers from a text file
+    //Create and initialize the circular buffer 
     CircularBuffer cb;
-
-    // Circular buffer larger than read buffer
     buffer_init(&cb, bufferSize * 4);
-
-    char *temp = malloc(bufferSize);
-    if (!temp) {
+    char *temp = malloc(bufferSize); //Create an auxiliar buffer to save tthe read() values
+    if (!temp) { //Error control
         perror("malloc");
         exit(1);
     }
 
-    int sum = 0;
-    int reachedEOF = 0;
-
-    while (!reachedEOF || buffer_used_bytes(&cb) > 0) {
-
-        // Read block if not EOF
-        if (!reachedEOF) {
-
-            int bytesRead = read(fd, temp, bufferSize);
-
+    int sum = 0; //Variable that stores the final sum
+    int reachedEOF = 0; //Indicates when it arrives at the end of the file
+    while (!reachedEOF || buffer_used_bytes(&cb) > 0) { //It continues until the eof, or there is data remaining in buffer.
+        if (!reachedEOF) { //Read block if not EOF
+            int bytesRead = read(fd, temp, bufferSize); //It reads to bufferSize bytes.
+            //If read returns 0, end of file.
             if (bytesRead == 0) {
                 reachedEOF = 1;
-            } else {
+            } else { //If it reads data, it puts it byte by byte into the circular buffer.
                 for (int i = 0; i < bytesRead; i++) {
                     buffer_push(&cb, temp[i]);
                 }
             }
         }
-
         // Extract complete numbers
-        int elemSize = buffer_size_next_element(&cb, ',', reachedEOF);
-
-        while (elemSize != -1) {
-
-            char numberStr[elemSize + 1];
-
-            for (int i = 0; i < elemSize; i++) {
+        int elemSize = buffer_size_next_element(&cb, ',', reachedEOF); //It checks how many bytes has the next number.
+        while (elemSize != -1) { //While there is a full number
+            char numberStr[elemSize + 1]; //Create an string for the num
+            for (int i = 0; i < elemSize; i++) { //Take those bytes out of the buffer.
                 numberStr[i] = buffer_pop(&cb);
             }
-
-            numberStr[elemSize] = '\0';
-
+            numberStr[elemSize] = '\0'; //Convert to string C
             // Remove comma if present
             if (numberStr[elemSize - 1] == ',')
                 numberStr[elemSize - 1] = '\0';
-
-            if (strlen(numberStr) > 0)
+            if (strlen(numberStr) > 0) //If it is not empty, it converts it to a number and adds it.
                 sum += atol(numberStr);
-
-            elemSize = buffer_size_next_element(&cb, ',', reachedEOF);
+            elemSize = buffer_size_next_element(&cb, ',', reachedEOF); //Repeat until no more numbers.
         }
     }
-
-    free(temp);
+    free(temp); //Free memory
     buffer_deallocate(&cb);
-
-    return sum;
+    return sum; //retur the final sum
 }
 
 
