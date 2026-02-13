@@ -24,7 +24,6 @@ int read_line(int fd, CircularBuffer *cb, char *line, int max_len, int *reachedE
             line[elemSize] = '\0';  // add string terminator
             return elemSize; // return size of line read
         }
-
         if (*reachedEOF) // if EOF reached and no full line stop reading
             return 0;
         char temp[BUFFER_SIZE];
