@@ -70,28 +70,21 @@ int main() {
                 waitpid(pid, NULL, 0); // parent waits until child finishes
             }
         }
-
-        // CONCURRENT execution
-        else if (strcmp(line, "CONCURRENT") == 0) {
-
-            read_line(STDIN_FILENO, &cb, line, BUFFER_SIZE, &reachedEOF);
-
-            pid_t pid = fork();
-            if (pid < 0) {
+        else if (strcmp(line, "CONCURRENT") == 0) { // CONCURRENT execution
+            read_line(STDIN_FILENO, &cb, line, BUFFER_SIZE, &reachedEOF); // read next line containing the command to execute
+            pid_t pid = fork(); // create a child process
+            if (pid < 0) { // check if fork failed
                 perror("fork");
                 exit(1);
             }
-
-            if (pid == 0) {
-                char **argv = split_command(line);
-                execvp(argv[0], argv);
-                perror("execvp");
+            if (pid == 0) { // child process executes the command
+                char **argv = split_command(line); // split command into argv format
+                execvp(argv[0], argv); // replace child process with the new program
+                perror("execvp"); // if execvp fails, print error and exit
                 exit(1);
             }
-
-            // NO wait here (background)
-        }
-
+               // parent does NOT wait 
+                 }
         // PIPED execution
         else if (strcmp(line, "PIPED") == 0 || strcmp(line, "PIPE") == 0) {
 
