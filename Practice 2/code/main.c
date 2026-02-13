@@ -41,47 +41,33 @@ int read_line(int fd, CircularBuffer *cb, char *line, int max_len, int *reachedE
 }
 
 int main() {
-
-    // Evitar procesos zombie en CONCURRENT
-    signal(SIGCHLD, SIG_IGN);
-
-    CircularBuffer cb;
-    buffer_init(&cb, BUFFER_SIZE);
-
-    char line[BUFFER_SIZE];
+    signal(SIGCHLD, SIG_IGN); //handle child process termination automatically
+    CircularBuffer cb; // declare circular buffer
+    buffer_init(&cb, BUFFER_SIZE); // initialize buffer
+    char line[BUFFER_SIZE];  // store input lines
     int reachedEOF = 0;
-
-    while (1) {
-
-        // Read execution mode
-        if (read_line(STDIN_FILENO, &cb, line, BUFFER_SIZE, &reachedEOF) <= 0)
+    while (1) { // main shell loop
+        if (read_line(STDIN_FILENO, &cb, line, BUFFER_SIZE, &reachedEOF) <= 0) // read execution mode (SINGLE, PIPE, CONCURRENT, EXIT)
             break;
-
-        // Remove newline
-        line[strcspn(line, "\n")] = '\0';
-
-        if (strcmp(line, "EXIT") == 0) {
+        line[strcspn(line, "\n")] = '\0'; // remove newline character from string
+        if (strcmp(line, "EXIT") == 0) { // if the command is EXIT, terminates program
             break;
         }
 
-        // SINGLE execution
-        if (strcmp(line, "SINGLE") == 0) {
-
-            read_line(STDIN_FILENO, &cb, line, BUFFER_SIZE, &reachedEOF);
-
-            pid_t pid = fork();
-            if (pid < 0) {
+        if (strcmp(line, "SINGLE") == 0) { // SINGLE execution mode
+            read_line(STDIN_FILENO, &cb, line, BUFFER_SIZE, &reachedEOF); // read next line containing command
+            pid_t pid = fork();  // create child process
+            if (pid < 0) { // check fork error
                 perror("fork");
                 exit(1);
             }
-
-            if (pid == 0) {
-                char **argv = split_command(line);
-                execvp(argv[0], argv);
-                perror("execvp");
+            if (pid == 0) { // child process
+                char **argv = split_command(line);  //split command into argv array
+                execvp(argv[0], argv); // replace child process with command
+                perror("execvp"); // if exec fails, print error
                 exit(1);
             } else {
-                waitpid(pid, NULL, 0);
+                waitpid(pid, NULL, 0); // parent waits until child finishes
             }
         }
 
