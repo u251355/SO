@@ -83,7 +83,7 @@ int main() {
                 perror("execvp"); // if execvp fails, print error and exit
                 exit(1);
             }
-               // parent does NOT wait 
+               // parent does not wait 
                  }
         // PIPED execution
         else if (strcmp(line, "PIPED") == 0 || strcmp(line, "PIPE") == 0) {
