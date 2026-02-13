@@ -86,49 +86,40 @@ int main() {
                  }
         // PIPED execution
         else if (strcmp(line, "PIPED") == 0 || strcmp(line, "PIPE") == 0) {
-
             char line1[BUFFER_SIZE];
             char line2[BUFFER_SIZE];
-
             read_line(STDIN_FILENO, &cb, line1, BUFFER_SIZE, &reachedEOF);
             read_line(STDIN_FILENO, &cb, line2, BUFFER_SIZE, &reachedEOF);
-
             int pipefd[2];
             if (pipe(pipefd) < 0) {
                 perror("pipe");
                 exit(1);
             }
-
             pid_t pid1 = fork();
             if (pid1 < 0) {
                 perror("fork");
                 exit(1);
             }
-
             if (pid1 == 0) {
                 // First process writes to pipe
                 dup2(pipefd[1], STDOUT_FILENO);
                 close(pipefd[0]);
                 close(pipefd[1]);
-
                 char **argv1 = split_command(line1);
                 execvp(argv1[0], argv1);
                 perror("execvp");
                 exit(1);
             }
-
             pid_t pid2 = fork();
             if (pid2 < 0) {
                 perror("fork");
                 exit(1);
             }
-
             if (pid2 == 0) {
                 // Second process reads from pipe
                 dup2(pipefd[0], STDIN_FILENO);
                 close(pipefd[1]);
                 close(pipefd[0]);
-
                 char **argv2 = split_command(line2);
                 execvp(argv2[0], argv2);
                 perror("execvp");
@@ -137,7 +128,6 @@ int main() {
 
             close(pipefd[0]);
             close(pipefd[1]);
-
             waitpid(pid1, NULL, 0);
             waitpid(pid2, NULL, 0);
         }
