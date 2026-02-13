@@ -7,42 +7,35 @@
 #include <signal.h>
 #include "circularBuffer.h"
 #include "splitCommand.h"
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 1024  // we define the maximum buffer size
 
-// Function to read one line using circular buffer
-int read_line(int fd, CircularBuffer *cb, char *line, int max_len, int *reachedEOF) {
-    int bytes_read;
-    int elemSize;
+int read_line(int fd, CircularBuffer *cb, char *line, int max_len, int *reachedEOF) // function to read one line using circular buffer
+{
+    int bytes_read; // initialize number of bytes read from input
+    int elemSize; // initialize the size of next complete line in buffer
 
-    while (1) {
-        elemSize = buffer_size_next_element(cb, '\n', *reachedEOF);
-
-        if (elemSize > 0) {
-            if (elemSize > max_len - 1)
+    while (1) {   // loop until a full line is found
+        elemSize = buffer_size_next_element(cb, '\n', *reachedEOF);  // check if a full line ending with '\n' exists in buffer
+        if (elemSize > 0) { // if a complete line is available
+            if (elemSize > max_len - 1) // avoid overflow if line is too long
                 elemSize = max_len - 1;
-
-            for (int i = 0; i < elemSize; i++)
+            for (int i = 0; i < elemSize; i++)  // copy characters from circular buffer into line
                 line[i] = buffer_pop(cb);
-
-            line[elemSize] = '\0';
-            return elemSize;
+            line[elemSize] = '\0';  // add string terminator
+            return elemSize; // return size of line read
         }
 
-        if (*reachedEOF)
+        if (*reachedEOF) // if EOF reached and no full line stop reading
             return 0;
-
         char temp[BUFFER_SIZE];
-        bytes_read = read(fd, temp, BUFFER_SIZE);
-
-        if (bytes_read < 0) {
+        bytes_read = read(fd, temp, BUFFER_SIZE); // read more data from the file
+        if (bytes_read < 0) { // check if there is a read error
             perror("read");
             exit(1);
         }
-
-        if (bytes_read == 0)
+        if (bytes_read == 0) // if no bytes read, EOF true
             *reachedEOF = 1;
-
-        for (int i = 0; i < bytes_read; i++)
+        for (int i = 0; i < bytes_read; i++) // push all read bytes into circular buffer
             buffer_push(cb, temp[i]);
     }
 }
