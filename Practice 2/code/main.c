@@ -40,7 +40,7 @@ int read_line(int fd, CircularBuffer *cb, char *line, int max_len, int *reachedE
 }
 
 int main() {
-    signal(SIGCHLD, SIG_IGN); //handle child process termination automatically
+    //signal(SIGCHLD, SIG_IGN); //handle child process termination automatically
     CircularBuffer cb; // declare circular buffer
     buffer_init(&cb, BUFFER_SIZE); // initialize buffer
     char line[BUFFER_SIZE];  // store input lines
