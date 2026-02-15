@@ -84,7 +84,6 @@ int main() {
             }
                // parent does not wait 
                  }
-        // PIPED execution
         else if (strcmp(line, "PIPED") == 0 || strcmp(line, "PIPE") == 0) { // we check if the user has introduced the PIPE or PIPED execution mode
             char line1[BUFFER_SIZE]; // it stores the first command
             char line2[BUFFER_SIZE]; // it stores the second command
@@ -97,7 +96,7 @@ int main() {
                 exit(1);
             }
             pid_t pid1 = fork(); // it creates a child
-            if (pid1 < 0) { // error control
+            if (pid1 < 0) { //  fork error control
                 perror("fork");
                 exit(1);
             }
@@ -112,7 +111,7 @@ int main() {
                 exit(1);
             }
             pid_t pid2 = fork(); // it creates the second child 
-            if (pid2 < 0) { // error control
+            if (pid2 < 0) { //  fork error control
                 perror("fork");
                 exit(1);
             }
@@ -121,7 +120,7 @@ int main() {
                 // closes the descriptors that are not necessary
                 close(pipefd[1]);
                 close(pipefd[0]);
-                char **argv2 = split_command(line2); // executes the second command
+                char **argv2 = split_command(line2); 
                 execvp(argv2[0], argv2);
                 perror("execvp"); // error control
                 exit(1);
@@ -134,7 +133,6 @@ int main() {
             waitpid(pid2, NULL, 0);
         }
     }
-
     buffer_deallocate(&cb); // frees the memory of the circcular buffer
     return 0;
 }
