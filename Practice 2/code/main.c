@@ -11,9 +11,8 @@
 
 int read_line(int fd, CircularBuffer *cb, char *line, int max_len, int *reachedEOF) // function to read one line using circular buffer
 {
-    int bytes_read; // initialize number of bytes read from input
-    int elemSize; // initialize the size of next complete line in buffer
-
+    int bytes_read; // number of bytes read from input
+    int elemSize; // size of next complete line in buffer
     while (1) {   // loop until a full line is found
         elemSize = buffer_size_next_element(cb, '\n', *reachedEOF);  // check if a full line ending with '\n' exists in buffer
         if (elemSize > 0) { // if a complete line is available
@@ -40,7 +39,6 @@ int read_line(int fd, CircularBuffer *cb, char *line, int max_len, int *reachedE
 }
 
 int main() {
-    //signal(SIGCHLD, SIG_IGN); //handle child process termination automatically
     CircularBuffer cb; // declare circular buffer
     buffer_init(&cb, BUFFER_SIZE); // initialize buffer
     char line[BUFFER_SIZE];  // store input lines
@@ -52,7 +50,6 @@ int main() {
         if (strcmp(line, "EXIT") == 0) { // if the command is EXIT, terminates program
             break;
         }
-
         if (strcmp(line, "SINGLE") == 0) { // SINGLE execution mode
             read_line(STDIN_FILENO, &cb, line, BUFFER_SIZE, &reachedEOF); // read next line containing command
             pid_t pid = fork();  // create child process
@@ -69,7 +66,7 @@ int main() {
                 waitpid(pid, NULL, 0); // parent waits until child finishes
             }
         }
-        else if (strcmp(line, "CONCURRENT") == 0) { // CONCURRENT execution
+        else if (strcmp(line, "CONCURRENT") == 0) { // CONCURRENT execution mode
             read_line(STDIN_FILENO, &cb, line, BUFFER_SIZE, &reachedEOF); // read next line containing the command to execute
             pid_t pid = fork(); // create a child process
             if (pid < 0) { // check if fork failed
@@ -107,7 +104,7 @@ int main() {
                 close(pipefd[1]);
                 char **argv1 = split_command(line1); // convert the command to argv format 
                 execvp(argv1[0], argv1); // replace the child process with the program of the first command
-                perror("execvp"); // if it fails (error control)
+                perror("execvp"); // error control
                 exit(1);
             }
             pid_t pid2 = fork(); // it creates the second child 
