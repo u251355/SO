@@ -31,7 +31,7 @@ char buffer [70];
 
 //EX3
 int main3{
-char buffer[100];
+char buffer[100]; //inicializar
 int sum=0;
 int n;
 while (int bytes = read(0,buffer,100)>0) { //mientras lea algo
@@ -40,9 +40,17 @@ sscanf(buffer,"%d",&n)//lee el bufer
 sum += n; //suma
     }
 int fd4 = open(argv[1], O_WRONLY|O_CREATE,0644);
-int write(argv[1],&sum,ssixeof(sum));
+int write(argv[1],&sum,sizeof(sum));//porque es binario
 int close(fd);
-
 }
-
-
+//Ex4
+int main(){
+    int fd5 = open(text.txt, O_RDONLY,0644);
+    int out = lseek(fd5,0,SEEKEND);//desde el final
+    char c;
+     while(lseek(fd, -1, SEEK_CUR) >= 0) { //mientras lea
+        read(fd, &c, 1);//lee
+        write(1, &c, 1);//lo escribes en el std output
+     }
+    int close(fd5);
+    }
