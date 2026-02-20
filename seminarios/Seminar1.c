@@ -29,5 +29,20 @@ char buffer [70];
     close(fd2);
 }
 
+//EX3
+int main3{
+char buffer[100];
+int sum=0;
+int n;
+while (int bytes = read(0,buffer,100)>0) { //mientras lea algo
+buffer[bytes] = '\0'; //cierra el texto
+sscanf(buffer,"%d",&n)//lee el bufer
+sum += n; //suma
+    }
+int fd4 = open(argv[1], O_WRONLY|O_CREATE,0644);
+int write(argv[1],&sum,ssixeof(sum));
+int close(fd);
+
+}
 
 
