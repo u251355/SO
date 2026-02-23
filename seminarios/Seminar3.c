@@ -23,6 +23,42 @@ if (parent_pid_from_pipe == getppid())
 
 }
 //Ex2
+int main(int argc, char* argv[]) {
+int fd1[2];//dos pipes
+int fd2[2];
+pid_t pid = fork();//crea al hijo
+if (pid>0){
+    close(fd1[0]);
+    close(fd2[0]);
+    for (int i = 1; i < argc; i++) {//manda por la pipe cada numero
+            int num = atoi(argv[i]);
+            write(fd1[1], &num, sizeof(num));
+        }
+    }
+    close(fd[1]);
+    else {  // child
+        close(fd1[1]);
+        close(fd2[0]);
+        int num;
+        while (read(fd1[0], &num, sizeof(num)) > 0) {//lee los numeros de la pipe
+            if (num % 2 == 0) {
+                write(fd2[1], &num, sizeof(num));
+            }
+        }char buffer[20];
+          int len = sprintf(buffer, "%d\n", num);
+         write(1, buffer, len);
+
+        close(pipe1[0]);
+        close(pipe2[1]);
+    }
+
+    return 0;
+}
+
+
+
+
+
 
 
 
