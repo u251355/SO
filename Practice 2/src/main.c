@@ -15,6 +15,8 @@ int read_line(int fd, CircularBuffer *cb, char *line, int max_len, int *reachedE
     int elemSize; // size of next complete line in buffer
     while (1) {   // loop until a full line is found
         elemSize = buffer_size_next_element(cb, '\n', *reachedEOF);  // check if a full line ending with '\n' exists in buffer
+
+        //case 1: there is delimiter
         if (elemSize > 0) { // if a complete line is available
             if (elemSize > max_len - 1) // avoid overflow if line is too long
                 elemSize = max_len - 1;
@@ -23,6 +25,8 @@ int read_line(int fd, CircularBuffer *cb, char *line, int max_len, int *reachedE
             line[elemSize] = '\0';  // add string terminator
             return elemSize; // return size of line read
         }
+
+        //case 2: we don't find a delimiter but still have data to read
         if (*reachedEOF) // if EOF reached and no full line stop reading
             return 0;
         char temp[BUFFER_SIZE];
@@ -31,6 +35,8 @@ int read_line(int fd, CircularBuffer *cb, char *line, int max_len, int *reachedE
             perror("read");
             exit(1);
         }
+        
+        // case 3: no slash and have read it all
         if (bytes_read == 0) // if no bytes read, EOF true
             *reachedEOF = 1;
         for (int i = 0; i < bytes_read; i++) // push all read bytes into circular buffer
