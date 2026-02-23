@@ -18,7 +18,7 @@ else{
     close(fd[1]);//cierra escritura
      read(fd[0],&parent_pid_from_pipe, sizeof(parent_pid_from_pipe)); //lee
 }
-if (parent_pid_from_pipe == getppid())
+if (parent_pid_from_pipe == getppid())//si coinciden correcto
             printf("Correct\n");
 
 }
@@ -34,8 +34,11 @@ if (pid>0){
             int num = atoi(argv[i]);
             write(fd1[1], &num, sizeof(num));
         }
+        char buffer[20];
+          int len = sprintf(buffer, "%d\n", num);
+         write(1, buffer, len);
     }
-    close(fd[1]);
+    close(fd1[0]);
     else {  // child
         close(fd1[1]);
         close(fd2[0]);
@@ -44,12 +47,10 @@ if (pid>0){
             if (num % 2 == 0) {
                 write(fd2[1], &num, sizeof(num));
             }
-        }char buffer[20];
-          int len = sprintf(buffer, "%d\n", num);
-         write(1, buffer, len);
+        }
 
-        close(pipe1[0]);
-        close(pipe2[1]);
+        close(fd1[0]);
+        close(fd2[1]);
     }
 
     return 0;
