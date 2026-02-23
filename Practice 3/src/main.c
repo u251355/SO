@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parsePGM.h"
-
 #define BUFF_SIZE 1024
 
 typedef struct {
