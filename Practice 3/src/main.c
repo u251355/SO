@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
     int nPixels = width * height;
     int dataSize = nPixels;
 
-    histogram = calloc(maxval + 1, sizeof(unsigned int));
+    histogram = calloc(maxval, sizeof(unsigned int));
     if (!histogram) {
         perror("calloc histogram");
         return 1;
@@ -149,7 +149,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    for (int i = 0; i <= maxval; i++) {
+    for (int i = 0; i < maxval; i++) {
         char line[64];
         int len = sprintf(line, "%d,%d\n", i, histogram[i]);
         write(fd_out, line, len);
