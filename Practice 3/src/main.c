@@ -13,8 +13,13 @@ typedef struct {
     int offset;
     int bytesToRead;
     int maxval;
-    unsigned int* localHist;
 } ThreadInfo;
+
+/* Global shared histogram */
+unsigned int* histogram;
+
+/* Global mutex */
+pthread_mutex_t hist_mutex;
 
 void* worker(void* arg) {
     ThreadInfo* info = (ThreadInfo*)arg;
@@ -48,9 +53,14 @@ void* worker(void* arg) {
             totalRead += r;
         }
 
+        /* LOCK before updating shared histogram */
+        pthread_mutex_lock(&hist_mutex);
+
         for (int i = 0; i < totalRead; i++) {
-            info->localHist[buffer[i]]++;
+            histogram[buffer[i]]++;
         }
+
+        pthread_mutex_unlock(&hist_mutex);
 
         remaining -= totalRead;
     }
@@ -88,10 +98,15 @@ int main(int argc, char* argv[]) {
     int nPixels = width * height;
     int dataSize = nPixels;
 
-    /* Global histogram (0..maxval) */
-    unsigned int* histogram = calloc(maxval + 1, sizeof(unsigned int));
+    histogram = calloc(maxval + 1, sizeof(unsigned int));
     if (!histogram) {
         perror("calloc histogram");
+        return 1;
+    }
+
+    if (pthread_mutex_init(&hist_mutex, NULL) != 0) {
+        perror("mutex init");
+        free(histogram);
         return 1;
     }
 
@@ -107,28 +122,14 @@ int main(int argc, char* argv[]) {
     int chunk = dataSize / numThreads;
 
     for (int i = 0; i < numThreads; i++) {
-
         infos[i].path = argv[1];
         infos[i].offset = nBytesHeader + i * chunk;
         infos[i].maxval = maxval;
         infos[i].bytesToRead = (i == numThreads - 1) ?
                                (dataSize - i * chunk) : chunk;
 
-        infos[i].localHist = calloc(maxval + 1, sizeof(unsigned int));
-        if (!infos[i].localHist) {
-            perror("calloc localHist");
-            for (int j = 0; j < i; j++)
-                free(infos[j].localHist);
-            free(histogram);
-            free(threads);
-            free(infos);
-            return 1;
-        }
-
         if (pthread_create(&threads[i], NULL, worker, &infos[i]) != 0) {
             perror("pthread_create");
-            for (int j = 0; j <= i; j++)
-                free(infos[j].localHist);
             free(histogram);
             free(threads);
             free(infos);
@@ -136,17 +137,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    /* Join threads */
     for (int i = 0; i < numThreads; i++) {
         pthread_join(threads[i], NULL);
-    }
-
-    /* Merge histograms */
-    for (int t = 0; t < numThreads; t++) {
-        for (int i = 0; i <= maxval; i++) {
-            histogram[i] += infos[t].localHist[i];
-        }
-        free(infos[t].localHist);
     }
 
     int fd_out = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -166,6 +158,7 @@ int main(int argc, char* argv[]) {
 
     close(fd_out);
 
+    pthread_mutex_destroy(&hist_mutex);
     free(histogram);
     free(threads);
     free(infos);
