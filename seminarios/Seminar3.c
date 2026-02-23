@@ -35,8 +35,10 @@ if (pid>0){
             write(fd1[1], &num, sizeof(num));
         }
         char buffer[20];
-          int len = sprintf(buffer, "%d\n", num);
+        while (read(fd2[0], &num, sizeof(num)) > 0) {//imprimepor el standard output
+        int len = sprintf(buffer, "%d\n", num);
          write(1, buffer, len);
+         }
     }
     close(fd1[0]);
     else {  // child
@@ -44,11 +46,10 @@ if (pid>0){
         close(fd2[0]);
         int num;
         while (read(fd1[0], &num, sizeof(num)) > 0) {//lee los numeros de la pipe
-            if (num % 2 == 0) {
-                write(fd2[1], &num, sizeof(num));
+            if (num % 2 == 0) {//par
+                write(fd2[1], &num, sizeof(num));//envia
             }
         }
-
         close(fd1[0]);
         close(fd2[1]);
     }
