@@ -7,56 +7,50 @@
 #include "parsePGM.h"
 #define BUFF_SIZE 1024
 
-typedef struct {
+typedef struct { // structure used to pass information to each thread 
     char* path;
     int offset;
     int bytesToRead;
-    int maxval;
+    int maxval; // maximum grayscale value
 } ThreadInfo;
+unsigned int* histogram; // global shared histogram 
+pthread_mutex_t hist_mutex; // global mutex 
 
-/* Global shared histogram */
-unsigned int* histogram;
-
-/* Global mutex */
-pthread_mutex_t hist_mutex;
-
-void* worker(void* arg) {
-    ThreadInfo* info = (ThreadInfo*)arg;
-    int fd = open(info->path, O_RDONLY);
-    if (fd < 0) {
+void* worker(void* arg) { //thread worker
+    ThreadInfo* info = (ThreadInfo*)arg; // cast argument to ThreadInfo pointer
+    int fd = open(info->path, O_RDONLY); // open the image file, each thread opens its own fd
+    if (fd < 0) { //error control
         perror("open");
         pthread_exit(NULL);
     }
-    if (lseek(fd, info->offset, SEEK_SET) < 0) {
+    if (lseek(fd, info->offset, SEEK_SET) < 0) {  // move file pointer to the correct starting position
         perror("lseek");
         close(fd);
         pthread_exit(NULL);
     }
-    unsigned char buffer[BUFF_SIZE];
-    int remaining = info->bytesToRead;
-    while (remaining > 0) {
-        int toRead = remaining > BUFF_SIZE ? BUFF_SIZE : remaining;
+    unsigned char buffer[BUFF_SIZE];  // buffer to read data
+    int remaining = info->bytesToRead; // number of bytes still left to read
+    while (remaining > 0) { // keep reading until this thread finishes its assigned part
+        int toRead = remaining > BUFF_SIZE ? BUFF_SIZE : remaining; // decide how many bytes to read in this iteration
         int totalRead = 0;
-        while (totalRead < toRead) {
-            int r = read(fd, buffer + totalRead, toRead - totalRead);
-            if (r <= 0) {
+        while (totalRead < toRead) { // read from file
+            int r = read(fd, buffer + totalRead, toRead - totalRead); // try to read the remaining missing bytes from the file
+            if (r <= 0) { //error control
                 perror("read");
                 close(fd);
                 pthread_exit(NULL);
             }
-            totalRead += r;
+            totalRead += r;   // add the number of bytes just read to the total counter
         }
-
-        /* LOCK before updating shared histogram */
-        pthread_mutex_lock(&hist_mutex);
-        for (int i = 0; i < totalRead; i++) {
-            histogram[buffer[i]]++;
+        pthread_mutex_lock(&hist_mutex); // LOCK before updating shared histogram 
+        for (int i = 0; i < totalRead; i++) { // increase the count of each pixel value 
+            histogram[buffer[i]]++; // increment the histogram count for this pixel value
         }
-        pthread_mutex_unlock(&hist_mutex);
-        remaining -= totalRead;
+        pthread_mutex_unlock(&hist_mutex);// unlock the mutex so other threads can update the histogram
+        remaining -= totalRead; // update remaining bytes left for this thread
     }
     close(fd);
-    pthread_exit(NULL);
+    pthread_exit(NULL); // terminate the thread execution.
 }
 int main(int argc, char* argv[]) {
     if (argc != 4) {
