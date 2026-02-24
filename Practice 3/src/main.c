@@ -49,7 +49,7 @@ void* worker(void* arg) { //thread worker
         pthread_mutex_unlock(&hist_mutex);// unlock the mutex so other threads can update the histogram
         remaining -= totalRead; // update remaining bytes left for this thread
     }
-    close(fd);
+    close(fd); // close the file descriptor for this thread
     pthread_exit(NULL); // terminate the thread execution.
 }
 int main(int argc, char* argv[]) {
