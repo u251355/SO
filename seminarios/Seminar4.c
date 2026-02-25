@@ -27,7 +27,6 @@ int main(int argc, char *argv[])// el que sendea
 }
 
 //Ex2
-volatile sig_atomic_t step = 1;
 void handler(int sig)//dice que vaya suemando de mas en mas
 {
     step++;   
@@ -52,6 +51,23 @@ int main()
         write(1, "\n", 1);
         usleep(100000);  
         i += step;
+    }
+    _exit(0);
+}
+void handler(int sig)
+{
+    step++;   
+}
+
+int main()
+{
+    signal(SIGINT, handler);
+    int counter = 0;
+    while (counter <= 500)
+    {
+        printf("%d\n", counter);
+        usleep(100000);   // 100 ms
+        counter += step;
     }
     _exit(0);
 }
