@@ -53,28 +53,28 @@ void* worker(void* arg) { //thread worker
     pthread_exit(NULL); // terminate the thread execution.
 }
 int main(int argc, char* argv[]) {
-    if (argc != 4) {
-        printf("Usage: %s image.pgm histogram.txt numThreads\n", argv[0]);
+    if (argc != 4) { // check if the user gave exactly 3 arguments and program name
+        printf("Input: %s image.pgm histogram.txt numThreads\n", argv[0]);
         return 1;
     }
-    int numThreads = atoi(argv[3]);
-    if (numThreads <= 0) {
+    int numThreads = atoi(argv[3]); // convert the 3rd argument number of threads
+    if (numThreads <= 0) { // make sure the number of threads is greater than 0
         printf("Number of threads must be > 0\n");
         return 1;
     }
-    int width, height, maxval;
-    int nBytesHeader = parse_pgm_header(argv[1], &width, &height, &maxval);
-    if (nBytesHeader < 0) {
+    int width, height, maxval; // declare variables image width, height, and maximum grayscale value
+    int nBytesHeader = parse_pgm_header(argv[1], &width, &height, &maxval); // call function to read the PGM header and get width, height, max value
+    if (nBytesHeader < 0) {// if header parsing failed
         printf("Error parsing PGM header\n");
         return 1;
     }
-    if (maxval > 255) {
+    if (maxval > 255) { // we only handle 1 byte per pixel
         printf("Expecting 1 byte per pixel\n");
         return 1;
     }
-    int nPixels = width * height;
-    int dataSize = nPixels;
-    histogram = calloc(maxval, sizeof(unsigned int));
+    int nPixels = width * height; // total number of pixels in the image
+    int dataSize = nPixels; // number of bytes of image data 
+    histogram = calloc(maxval, sizeof(unsigned int)); // allocate memory for the global histogram array
     if (!histogram) {
         perror("calloc histogram");
         return 1;
