@@ -75,30 +75,29 @@ int main(int argc, char* argv[]) {
     int nPixels = width * height; // total number of pixels in the image
     int dataSize = nPixels; // number of bytes of image data 
     histogram = calloc(maxval, sizeof(unsigned int)); // allocate memory for the global histogram array
-    if (!histogram) {
+    if (!histogram) { // if memory allocation failed
         perror("calloc histogram");
         return 1;
     }
-    if (pthread_mutex_init(&hist_mutex, NULL) != 0) {
+    if (pthread_mutex_init(&hist_mutex, NULL) != 0) { // initialize the mutex to protect the histogram
         perror("mutex init");
         free(histogram);
         return 1;
     }
-    pthread_t* threads = malloc(numThreads * sizeof(pthread_t));
-    ThreadInfo* infos = malloc(numThreads * sizeof(ThreadInfo));
-    if (!threads || !infos) {
+    pthread_t* threads = malloc(numThreads * sizeof(pthread_t));   // allocate memory to store thread IDs
+    ThreadInfo* infos = malloc(numThreads * sizeof(ThreadInfo));  // allocate memory to store information for each thread
+    if (!threads || !infos) {  // if allocation failed
         perror("malloc");
         free(histogram);
         return 1;
     }
-    int chunk = dataSize / numThreads;
-    for (int i = 0; i < numThreads; i++) {
-        infos[i].path = argv[1];
-        infos[i].offset = nBytesHeader + i * chunk;
-        infos[i].maxval = maxval;
-        infos[i].bytesToRead = (i == numThreads - 1) ?
-                               (dataSize - i * chunk) : chunk;
-        if (pthread_create(&threads[i], NULL, worker, &infos[i]) != 0) {
+    int chunk = dataSize / numThreads;  // divide the image into almost equal parts for each thread
+    for (int i = 0; i < numThreads; i++) {  // loop to create each thread
+        infos[i].path = argv[1]; // set image path for this thread
+        infos[i].offset = nBytesHeader + i * chunk; // set where this thread will start reading
+        infos[i].maxval = maxval; // set maximum grayscale value
+        infos[i].bytesToRead = (i == numThreads - 1) ?(dataSize - i * chunk) : chunk;// the last thread may read fewer or more bytes to cover all remaining data
+        if (pthread_create(&threads[i], NULL, worker, &infos[i]) != 0) {  // create the thread and start the worker function
             perror("pthread_create");
             free(histogram);
             free(threads);
@@ -106,25 +105,25 @@ int main(int argc, char* argv[]) {
             return 1;
         }
     }
-    for (int i = 0; i < numThreads; i++) {
+    for (int i = 0; i < numThreads; i++) { // wait for all threads to finish
         pthread_join(threads[i], NULL);
     }
-    int fd_out = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd_out < 0) {
+    int fd_out = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, 0644); // open output file for writing
+    if (fd_out < 0) { // if opening file failed
         perror("open output");
         free(histogram);
         free(threads);
         free(infos);
         return 1;
     }
-    for (int i = 0; i < maxval; i++) {
+    for (int i = 0; i < maxval; i++) { // loop through histogram values
         char line[64];
-        int len = sprintf(line, "%d,%d\n", i, histogram[i]);
-        write(fd_out, line, len);
+        int len = sprintf(line, "%d,%d\n", i, histogram[i]); // convert the histogram value to string format value,count
+        write(fd_out, line, len); // write the string line to the output file
     }
     close(fd_out);
-    pthread_mutex_destroy(&hist_mutex);
-    free(histogram);
+    pthread_mutex_destroy(&hist_mutex);// destroy mutex
+    free(histogram); // free all allocated memory
     free(threads);
     free(infos);
     return 0;
