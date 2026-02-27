@@ -27,7 +27,7 @@ int main(int argc, char *argv[])// el que sendea
 }
 
 //Ex2
-void handler(int sig)//dice que vaya suemando de mas en mas
+void handler(int sig)//dice que vaya sumando de mas en mas
 {
     step++;   
 }
@@ -54,6 +54,7 @@ int main()
     }
     _exit(0);
 }
+//con printf
 void handler(int sig)
 {
     step++;   
@@ -70,4 +71,46 @@ int main()
         counter += step;
     }
     _exit(0);
+}
+//Ex3
+int main() {
+    int p1[2], p2[2]; //ceramos las pipes lo primero
+    pipe(p1);
+    pipe(p2);
+
+    if (fork() == 0) { // el primer hijo
+        dup2(p1[1], 1);// redirige el mensaje
+        close(p1[0]);//cierra las pipe innecesarias
+        close(p1[1]);
+        char *args1[] = {"ps", "-ef", NULL};//sustituye a ps
+        execvp("ps", args1);
+        _exit(1);
+    }
+
+    if (fork() == 0) {//segundo hijo
+        dup2(p1[0], 0);//redirige lo suyo y el mensaje del otro
+        dup2(p2[1], 1);
+        close(p1[1]); 
+        close(p2[0]);
+        char *args2[] = {"grep", "-i", "system", NULL};
+        execvp("grep", args2);
+        _exit(1);
+    }
+
+    if (fork() == 0) {//trcer hioh
+        int fd = open("out.txt", O_CREAT | O_WRONLY | O_TRUNC, 0644); //es loq eu hace wc
+        dup2(p2[0], 0);//redirige
+        dup2(fd, 1);
+        close(p2[1]);
+        char *args3[] = {"wc", "-c", NULL};
+        execvp("wc", args3);
+        _exit(1);
+    }
+
+    close(p1[0]); 
+    close(p1[1]);
+    close(p2[0]); 
+    close(p2[1]);
+
+    return 0;
 }
