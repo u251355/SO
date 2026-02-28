@@ -59,7 +59,6 @@ void handler(int sig)
 {
     step++;   
 }
-
 int main()
 {
     signal(SIGINT, handler);
@@ -74,43 +73,102 @@ int main()
 }
 //Ex3
 int main() {
-    int p1[2], p2[2]; //ceramos las pipes lo primero
+    int p1[2], p2[2]; //creamos las pipes lo primero
     pipe(p1);
     pipe(p2);
-
     if (fork() == 0) { // el primer hijo
         dup2(p1[1], 1);// redirige el mensaje
-        close(p1[0]);//cierra las pipe innecesarias
+        close(p1[0]);//cierra las pipes innecesarias
         close(p1[1]);
         char *args1[] = {"ps", "-ef", NULL};//sustituye a ps
         execvp("ps", args1);
         _exit(1);
     }
-
     if (fork() == 0) {//segundo hijo
         dup2(p1[0], 0);//redirige lo suyo y el mensaje del otro
         dup2(p2[1], 1);
         close(p1[1]); 
         close(p2[0]);
         char *args2[] = {"grep", "-i", "system", NULL};
-        execvp("grep", args2);
+        execvp("grep", args2); //sustituye a grep
         _exit(1);
     }
-
     if (fork() == 0) {//trcer hioh
         int fd = open("out.txt", O_CREAT | O_WRONLY | O_TRUNC, 0644); //es loq eu hace wc
         dup2(p2[0], 0);//redirige
         dup2(fd, 1);
         close(p2[1]);
-        char *args3[] = {"wc", "-c", NULL};
+        char *args3[] = {"wc", "-c", NULL};//sustituye wc
         execvp("wc", args3);
         _exit(1);
     }
-
     close(p1[0]); 
     close(p1[1]);
     close(p2[0]); 
     close(p2[1]);
-
     return 0;
+}
+
+//Ex4
+int main(){
+int fd1[2];
+int fd2[2];
+int read =open(text.txt, O_RDONLY, 0644);
+for (int i=0; i<4; i++){//crea 4 hijos
+    pid_t pid = fork();
+    if (fork ==0){//los hijos
+    close(fd1[1]);
+    close(fd2[0]);
+    int sum = 0;
+    while (read(p1[0], &c, 1) > 0){//leen lo que les envia el padre
+                sum += c;
+            write(p2[1], &sum, sizeof(int));//escriben la suma
+            _exit(0);//porque es un fork dentro de un bucle
+        }
+    }
+    close(p1[0]);  //el padre
+    close(p2[1]);
+    int fd = open(argv[1], O_RDONLY);//lee del archivo
+    unsigned char c;
+    while (read(fd, &c, 1) > 0) //mientras lea algo
+    write(p1[1], &c, 1);//escribe a los hijos
+    close(p1[1]);  
+    close(fd);
+    int total = 0;
+    int partial;
+    for (int i = 0; i < 4; i++) { //lee las respeustas de los 4 hijos
+        read(p2[0], &partial, sizeof(int));
+        total += partial;
+    }
+    char buffer[20];
+    int i = 0;
+     n = total;
+    if (n == 0) buffer[i++] = '0';
+    else {
+        char temp[20];
+        int j = 0;
+        while (n) { temp[j++] = (n % 10) + '0'; n /= 10; }
+        while (j--) buffer[i++] = temp[j];
+    }
+    buffer[i++] = '\n';
+    write(1, buffer, i);
+    close(p2[0]);
+    for (int i = 0; i < 4; i++)
+        wait(NULL);
+    return 0;
+}
+}
+
+
+    
+
+
+
+
+
+
+
+
+
+
 }
