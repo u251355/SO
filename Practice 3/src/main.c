@@ -31,7 +31,12 @@ void* worker(void* arg) { //thread worker
     unsigned char buffer[BUFF_SIZE];  // buffer to read data
     int remaining = info->bytesToRead; // number of bytes still left to read
     while (remaining > 0) { // keep reading until this thread finishes its assigned part
-        int toRead = remaining > BUFF_SIZE ? BUFF_SIZE : remaining; // decide how many bytes to read in this iteration
+        int toRead;
+        if (remaining > BUFF_SIZE) {
+            toRead = BUFF_SIZE;
+        } else {
+            toRead = remaining;
+        } // decide how many bytes to read in this iteration
         int totalRead = 0;
         while (totalRead < toRead) { // read from file
             int r = read(fd, buffer + totalRead, toRead - totalRead); // try to read the remaining missing bytes from the file
@@ -96,7 +101,11 @@ int main(int argc, char* argv[]) {
         infos[i].path = argv[1]; // set image path for this thread
         infos[i].offset = nBytesHeader + i * chunk; // set where this thread will start reading
         infos[i].maxval = maxval; // set maximum grayscale value
-        infos[i].bytesToRead = (i == numThreads - 1) ?(dataSize - i * chunk) : chunk;// the last thread may read fewer or more bytes to cover all remaining data
+        if (i == numThreads - 1) {
+            infos[i].bytesToRead = dataSize - i * chunk;
+        } else {
+            infos[i].bytesToRead = chunk;
+        }// the last thread may read fewer or more bytes to cover all remaining data
         if (pthread_create(&threads[i], NULL, worker, &infos[i]) != 0) {  // create the thread and start the worker function
             perror("pthread_create");
             free(histogram);
