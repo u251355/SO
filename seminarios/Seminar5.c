@@ -1,0 +1,35 @@
+//Ex1
+#include <pthread.h>
+#include <unistd.h>
+void* wait_thread(void* arg) {//codigo para el create donde dices que duerman
+    sleep(1);
+    return NULL;
+}
+int main() {
+    pthread_t threads[100];//define los threads
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_create(&threads[i], NULL, wait_thread, NULL);//crea los threads
+    }
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL); //espera a que el thread acabe
+    }
+}
+//EX2
+//a
+int A[100];
+void* square(void* arg) {
+    int* index = (int*)arg; //el indice sra lo que reciba como argumento
+    A[*index] = (*index) * (*index); //cada array sera su indice por su indice
+    return NULL;
+}
+int main() {
+    pthread_t threads[100]; //def
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_create(&threads[i], NULL, square, &i);//crea
+    }
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);//espera a los 100
+    }
+    return 0;
+}
+//b
