@@ -7,7 +7,7 @@ void* wait_thread(void* arg) {//codigo para el create donde dices que duerman
 }
 int main() {
     pthread_t threads[100];//define los threads
-    for (int i = 0; i < NUM_THREADS; i++) {
+    for (int i = 0; i < NUM_THREADS; i++) {//bucle para crear muchos
         pthread_create(&threads[i], NULL, wait_thread, NULL);//crea los threads
     }
     for (int i = 0; i < NUM_THREADS; i++) {
@@ -18,14 +18,14 @@ int main() {
 //a
 int A[100];
 void* square(void* arg) {
-    int* index = (int*)arg; //el indice sra lo que reciba como argumento
+    int* index = (int*)arg; //el indice sera lo que reciba como argumento, pa
     A[*index] = (*index) * (*index); //cada array sera su indice por su indice
     return NULL;
 }
 int main() {
     pthread_t threads[100]; //def
     for (int i = 0; i < NUM_THREADS; i++) {
-        pthread_create(&threads[i], NULL, square, &i);//crea
+        pthread_create(&threads[i], NULL, square, &i);//crea, como parametro le pasas &i
     }
     for (int i = 0; i < NUM_THREADS; i++) {
         pthread_join(threads[i], NULL);//espera a los 100
@@ -33,3 +33,22 @@ int main() {
     return 0;
 }
 //b
+int A[100];
+void* allocate(void* arg) {
+    int index = *(int*)arg;//cast a int
+    free(arg);
+    A[index] = index * index;
+    return NULL;
+}
+int main() {
+    pthread_t threads[100]; //def
+    for (int i = 0; i < NUM_THREADS; i++) {
+         int* index = malloc(sizeof(int));
+        *index = i;
+        pthread_create(&threads[i], NULL, allocate, index);//crea pasandole index, no su direccion
+    }
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);//espera a los 100
+    }
+    return 0;
+}
