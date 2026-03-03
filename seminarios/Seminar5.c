@@ -82,7 +82,6 @@ int main() {
 //no necesitamos metodos de sincronizaxion porque cada thread pasa de uno mas pequeño a aotro mas grande, no hay riesgo de colision
 //b
 //aqui si que necesitamos una sincronizacion porque sino puede haber "race conditions"
-
 int A[10];
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; //siempre primero inicializar el mutex
 typedef struct {
@@ -101,3 +100,34 @@ void *move(void *arg) {
 }
 
 //c
+//lock
+//Ex4
+#define NUM_RESOURCES 5 //funcion que nos dan
+int nThreadsAccessing = 0;
+int getFromDatabase() {
+nThreadsAccessing++;
+printf("Number of Threads accessing the DB = %d\n",
+nThreadsAccessing);
+if (nThreadsAccessing > NUM_RESOURCES) _exit(1);
+usleep(rand()%10000);
+nThreadsAccessing--;
+return rand();
+}
+sem_t sem; //semaphor
+int main(){
+    pthread_t threads[20]; //inicializamos
+    sem_init(&sem, 0, NUM_RESOURCES); //inicializamos
+    for int(i=0; i<20; i++){ //creamos 20 threads
+        pthread_create(&threads[i], NULL, getFromDatabase, NULL)
+    }
+    for (int i = 0; i < 20; i++)
+        pthread_join(th[i], NULL);//siempre hay que esperar
+        sem_destroy(&sem); //siempre hay que destruir los semaphores 
+    return 0;
+
+
+
+
+}
+
+
