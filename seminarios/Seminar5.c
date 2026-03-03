@@ -52,3 +52,52 @@ int main() {
     }
     return 0;
 }
+//EX3
+//a
+int A[10];//array con 0 o 2 en cad aposicion
+typedef struct { ///i es origen, j es destino
+    int i, j;
+} move_t;
+void *move(void *arg) { //codigo que le pasas al thread
+    move_t *m = (move_t *)arg; //casteas el arg
+    if (A[m->i] > 0) { //solo movemos si hay particulas
+        A[m->i]--; //mueves particula
+        A[m->j]++;// quitas del origen
+    }
+    free(m);
+    return NULL;
+}
+int main() {
+    pthread_t th[5]; //creamos 5 hilos
+    for (int k = 0; k < 5; k++) {//cada thread
+        move_t *m = malloc(sizeof(move_t));
+        m->i = 2*k;
+        m->j = 2*k + 1;
+        pthread_create(&th[k], NULL, move, m);//los creas y le pasas m
+    }
+    for (int k = 0; k < 5; k++)//cada thread espera hasta que todos hayan acabdo
+        pthread_join(th[k], NULL);
+    return 0;
+}
+//no necesitamos metodos de sincronizaxion porque cada thread pasa de uno mas pequeño a aotro mas grande, no hay riesgo de colision
+//b
+//aqui si que necesitamos una sincronizacion porque sino puede haber "race conditions"
+
+int A[10];
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; //siempre primero inicializar el mutex
+typedef struct {
+    int i, j;
+} move_t;
+void *move(void *arg) {
+    move_t *m = (move_t *)arg;
+    pthread_mutex_lock(&lock);//lockeamos
+    if (A[m->i] > 0) {
+        A[m->i]--;
+        A[m->j]++;
+    }
+    pthread_mutex_unlock(&lock);//unlockeamos
+    free(m);
+    return NULL;
+}
+
+//c
