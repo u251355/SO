@@ -15,9 +15,11 @@ void*player(void*arg){
         wins++;
     }
     if (wins>=5){
-       eof=1;
+       eog=1;
     }
+    flag=1;
     pthread_mutex_unlock(&lock);//desbloquea
+    usleep(1000);
     }
     return NULL;
 }
