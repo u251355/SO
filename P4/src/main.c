@@ -15,13 +15,11 @@ int out = 0;
 int count = 0;
 
 int nextPixel = 0;
-int producers_finished = 0;
+int finished = 0;
 
 int histogram[HIST_SIZE];
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutexHist = PTHREAD_MUTEX_INITIALIZER;
-
 pthread_cond_t notFull = PTHREAD_COND_INITIALIZER;
 pthread_cond_t notEmpty = PTHREAD_COND_INITIALIZER;
 
@@ -33,7 +31,7 @@ void *producer(void *arg)
 
         if (nextPixel >= imageSize)
         {
-            producers_finished = 1;
+            finished = 1;
             pthread_cond_broadcast(&notEmpty);
             pthread_mutex_unlock(&mutex);
             return NULL;
@@ -42,9 +40,7 @@ void *producer(void *arg)
         while (count == bufferSize)
             pthread_cond_wait(&notFull, &mutex);
 
-        int value = image[nextPixel++];
-        buffer[in] = value;
-
+        buffer[in] = image[nextPixel++];
         in = (in + 1) % bufferSize;
         count++;
 
@@ -59,10 +55,10 @@ void *consumer(void *arg)
     {
         pthread_mutex_lock(&mutex);
 
-        while (count == 0 && !producers_finished)
+        while (count == 0 && !finished)
             pthread_cond_wait(&notEmpty, &mutex);
 
-        if (count == 0 && producers_finished)
+        if (count == 0 && finished)
         {
             pthread_mutex_unlock(&mutex);
             return NULL;
@@ -75,9 +71,7 @@ void *consumer(void *arg)
         pthread_cond_signal(&notFull);
         pthread_mutex_unlock(&mutex);
 
-        pthread_mutex_lock(&mutexHist);
         histogram[value]++;
-        pthread_mutex_unlock(&mutexHist);
     }
 }
 
@@ -92,16 +86,10 @@ int main(int argc, char *argv[])
 
     char *input = argv[1];
     char *output = argv[2];
-    int producers = atoi(argv[3]);
     int consumers = atoi(argv[4]);
     bufferSize = atoi(argv[5]);
 
     FILE *f = fopen(input, "rb");
-    if (!f)
-    {
-        printf("Error opening file\n");
-        return 1;
-    }
 
     char format[3];
     int width, height, maxval;
@@ -122,17 +110,15 @@ int main(int argc, char *argv[])
     for (int i = 0; i < HIST_SIZE; i++)
         histogram[i] = 0;
 
-    pthread_t prod[producers];
+    pthread_t prod;
     pthread_t cons[consumers];
 
-    for (int i = 0; i < producers; i++)
-        pthread_create(&prod[i], NULL, producer, NULL);
+    pthread_create(&prod, NULL, producer, NULL);
 
     for (int i = 0; i < consumers; i++)
         pthread_create(&cons[i], NULL, consumer, NULL);
 
-    for (int i = 0; i < producers; i++)
-        pthread_join(prod[i], NULL);
+    pthread_join(prod, NULL);
 
     for (int i = 0; i < consumers; i++)
         pthread_join(cons[i], NULL);
