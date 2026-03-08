@@ -1,10 +1,7 @@
 /*
- * Productor‑Consumidor con múltiples productores y consumidores
- * 
- * Compilación: gcc -pthread -o prodcons prodcons.c
- * Uso: ./prodcons fichero_entrada fichero_salida productores consumidores tam_buffer
- *
- * El tamaño de buffer se refiere al número de bloques (de 16384 bytes) que puede almacenar.
+ * Productor‑Consumidor para imagen PGM
+ * Compilar: gcc -pthread -o prodcons prodcons.c
+ * Uso: ./prodcons imagen.pgm salida.txt productores consumidores tam_buffer
  */
 
 #include <stdio.h>
@@ -13,31 +10,29 @@
 
 #define BLOCK_SIZE 16384
 
-// Estructura de un bloque de datos
 typedef struct {
     unsigned char data[BLOCK_SIZE];
-    int size;               // número de bytes realmente leídos (último bloque puede ser menor)
+    int size;               // número de bytes realmente leídos
 } block_t;
 
-// Variables globales para el fichero compartido
+// Archivo compartido
 FILE *file;
 pthread_mutex_t file_mutex = PTHREAD_MUTEX_INITIALIZER;
-int active_producers;               // número de productores que aún no han terminado
-int producers_done = 0;              // bandera que indica que todos los productores han acabado
+int active_producers;
+int producers_done = 0;
 
 // Buffer circular de bloques
-block_t **buffer;                    // array de punteros a bloque
-int buffer_size;                     // capacidad del buffer (número de bloques)
-int in = 0, out = 0, count = 0;      // índices y contador de elementos
+block_t **buffer;
+int buffer_size;
+int in = 0, out = 0, count = 0;
 pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t notFull = PTHREAD_COND_INITIALIZER;
 pthread_cond_t notEmpty = PTHREAD_COND_INITIALIZER;
 
-// Histograma global (protegido con su propio mutex)
+// Histograma global
 pthread_mutex_t hist_mutex = PTHREAD_MUTEX_INITIALIZER;
 int histogram[256] = {0};
 
-// Función del productor
 void *producer(void *arg) {
     while (1) {
         // Reservar memoria para un nuevo bloque
@@ -47,45 +42,40 @@ void *producer(void *arg) {
             pthread_exit(NULL);
         }
 
-        // Leer del fichero (protegido con mutex)
+        // Leer del archivo (protegido con mutex)
         pthread_mutex_lock(&file_mutex);
         blk->size = fread(blk->data, 1, BLOCK_SIZE, file);
         if (blk->size == 0) {
-            // Se ha alcanzado el final del fichero
+            // EOF: no hay más datos
             free(blk);
-            pthread_mutex_unlock(&file_mutex);   // liberar el mutex del fichero
+            pthread_mutex_unlock(&file_mutex);
 
-            // Actualizar el contador de productores activos
+            // Decrementar contador de productores activos
             pthread_mutex_lock(&buffer_mutex);
             active_producers--;
             if (active_producers == 0) {
                 producers_done = 1;
-                // Despertar a todos los consumidores que pudieran estar esperando
-                pthread_cond_broadcast(&notEmpty);
+                pthread_cond_broadcast(&notEmpty); // despertar consumidores
             }
             pthread_mutex_unlock(&buffer_mutex);
             pthread_exit(NULL);
         }
         pthread_mutex_unlock(&file_mutex);
 
-        // Intentar colocar el bloque en el buffer circular
+        // Insertar el bloque en el buffer circular
         pthread_mutex_lock(&buffer_mutex);
         while (count == buffer_size) {
-            // Buffer lleno: esperar a que haya hueco
             pthread_cond_wait(&notFull, &buffer_mutex);
         }
-        // Insertar el bloque
         buffer[in] = blk;
         in = (in + 1) % buffer_size;
         count++;
-        // Avisar a los consumidores de que hay datos
         pthread_cond_signal(&notEmpty);
         pthread_mutex_unlock(&buffer_mutex);
     }
     return NULL;
 }
 
-// Función del consumidor
 void *consumer(void *arg) {
     while (1) {
         pthread_mutex_lock(&buffer_mutex);
@@ -102,18 +92,16 @@ void *consumer(void *arg) {
         block_t *blk = buffer[out];
         out = (out + 1) % buffer_size;
         count--;
-        // Avisar a los productores de que hay espacio libre
         pthread_cond_signal(&notFull);
         pthread_mutex_unlock(&buffer_mutex);
 
-        // Procesar el bloque: actualizar el histograma
+        // Procesar el bloque: actualizar histograma
         pthread_mutex_lock(&hist_mutex);
         for (int i = 0; i < blk->size; i++) {
             histogram[blk->data[i]]++;
         }
         pthread_mutex_unlock(&hist_mutex);
 
-        // Liberar la memoria del bloque
         free(blk);
     }
     return NULL;
@@ -121,7 +109,7 @@ void *consumer(void *arg) {
 
 int main(int argc, char *argv[]) {
     if (argc != 6) {
-        fprintf(stderr, "Uso: %s fichero_entrada fichero_salida productores consumidores tam_buffer\n", argv[0]);
+        fprintf(stderr, "Uso: %s imagen.pgm salida.txt productores consumidores tam_buffer\n", argv[0]);
         return 1;
     }
 
@@ -132,18 +120,55 @@ int main(int argc, char *argv[]) {
     buffer_size = atoi(argv[5]);
 
     if (num_producers <= 0 || num_consumers <= 0 || buffer_size <= 0) {
-        fprintf(stderr, "Los números de productores, consumidores y tamaño de buffer deben ser positivos.\n");
+        fprintf(stderr, "Los números deben ser positivos.\n");
         return 1;
     }
 
-    // Abrir el fichero de entrada en modo binario
+    // Abrir archivo de imagen en modo binario
     file = fopen(input_file, "rb");
     if (!file) {
         perror("fopen");
         return 1;
     }
 
-    // Inicializar el buffer
+    // ---- Leer cabecera PGM ----
+    char format[3];
+    int width, height, maxval;
+
+    // Formato (P5, etc.)
+    if (fscanf(file, "%2s", format) != 1) {
+        fprintf(stderr, "Error leyendo formato PGM\n");
+        fclose(file);
+        return 1;
+    }
+
+    // Saltar posibles comentarios (líneas que empiezan con '#')
+    int c;
+    while ((c = fgetc(file)) == '#') {
+        while (fgetc(file) != '\n'); // saltar línea completa
+    }
+    ungetc(c, file); // devolver el carácter leído (que no es '#')
+
+    // Leer dimensiones
+    if (fscanf(file, "%d %d", &width, &height) != 2) {
+        fprintf(stderr, "Error leyendo dimensiones\n");
+        fclose(file);
+        return 1;
+    }
+
+    // Leer valor máximo
+    if (fscanf(file, "%d", &maxval) != 1) {
+        fprintf(stderr, "Error leyendo maxval\n");
+        fclose(file);
+        return 1;
+    }
+
+    // Saltar el salto de línea después del maxval
+    fgetc(file);
+    // A partir de aquí el puntero está al inicio de los datos de píxeles
+    // ---------------------------------
+
+    // Inicializar buffer
     buffer = malloc(sizeof(block_t *) * buffer_size);
     if (!buffer) {
         perror("malloc buffer");
@@ -153,7 +178,6 @@ int main(int argc, char *argv[]) {
 
     active_producers = num_producers;
 
-    // Crear los hilos productores
     pthread_t *producers = malloc(sizeof(pthread_t) * num_producers);
     pthread_t *consumers = malloc(sizeof(pthread_t) * num_consumers);
     if (!producers || !consumers) {
@@ -163,14 +187,15 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Crear hilos productores
     for (int i = 0; i < num_producers; i++) {
         if (pthread_create(&producers[i], NULL, producer, NULL) != 0) {
             perror("pthread_create productor");
-            // Cancelar los ya creados y salir (simplificado)
             exit(1);
         }
     }
 
+    // Crear hilos consumidores
     for (int i = 0; i < num_consumers; i++) {
         if (pthread_create(&consumers[i], NULL, consumer, NULL) != 0) {
             perror("pthread_create consumidor");
@@ -188,12 +213,13 @@ int main(int argc, char *argv[]) {
         pthread_join(consumers[i], NULL);
     }
 
-    // Escribir el histograma en el fichero de salida
+    // Escribir el histograma en el archivo de salida
     FILE *out = fopen(output_file, "w");
     if (!out) {
         perror("fopen salida");
     } else {
-        for (int i = 0; i < 256; i++) {
+        // Solo se imprimen los valores 0..254 (como en el ejemplo proporcionado)
+        for (int i = 0; i < 255; i++) {
             fprintf(out, "%d,%d\n", i, histogram[i]);
         }
         fclose(out);
