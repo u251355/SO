@@ -1,212 +1,162 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include "parsePGM.h"
 
-#define BLOCK_SIZE (1024*16)
 #define HIST_SIZE 256
 
-typedef struct {
-    unsigned char *data;
-    int size;
-} block_t;
+unsigned char *image;
+int imageSize;
 
-block_t *buffer;
-int sizeBuffer;
+int *buffer;
+int bufferSize;
 
 int in = 0;
 int out = 0;
-int elementsInBuffer = 0;
+int count = 0;
 
-int histogram[HIST_SIZE] = {0};
-
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t notFull = PTHREAD_COND_INITIALIZER;
-pthread_cond_t notEmpty = PTHREAD_COND_INITIALIZER;
-
-pthread_mutex_t lock_read = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t hist_mutex = PTHREAD_MUTEX_INITIALIZER;
+int nextPixel = 0;
 
 int producers_finished = 0;
-int Nprod;
 
-off_t readPos;
-off_t endPos;
+int histogram[HIST_SIZE];
 
-int fd;
+pthread_mutex_t mutexBuffer;
+pthread_mutex_t mutexHist;
+pthread_cond_t notFull;
+pthread_cond_t notEmpty;
 
 void *producer(void *arg)
 {
-    int nBytesRead;
-    off_t readPosLocal;
-
-    while(1)
+    while (1)
     {
-        pthread_mutex_lock(&lock_read);
+        pthread_mutex_lock(&mutexBuffer);
 
-        if(readPos >= endPos)
+        if (nextPixel >= imageSize)
         {
-            pthread_mutex_unlock(&lock_read);
-            break;
+            producers_finished = 1;
+            pthread_cond_broadcast(&notEmpty);
+            pthread_mutex_unlock(&mutexBuffer);
+            return NULL;
         }
 
-        readPosLocal = readPos;
-        readPos += BLOCK_SIZE;
+        while (count == bufferSize)
+            pthread_cond_wait(&notFull, &mutexBuffer);
 
-        pthread_mutex_unlock(&lock_read);
+        int value = image[nextPixel];
+        nextPixel++;
 
-        int toRead = BLOCK_SIZE;
-
-        if(readPosLocal + toRead > endPos)
-            toRead = endPos - readPosLocal;
-
-        lseek(fd, readPosLocal, SEEK_SET);
-
-        unsigned char *buff = malloc(toRead);
-        if(buff == NULL)
-        {
-            perror("malloc");
-            exit(1);
-        }
-
-        nBytesRead = read(fd, buff, toRead);
-
-        if(nBytesRead <= 0)
-        {
-            free(buff);
-            break;
-        }
-
-        pthread_mutex_lock(&mutex);
-
-        while(elementsInBuffer == sizeBuffer)
-            pthread_cond_wait(&notFull, &mutex);
-
-        buffer[in].data = buff;
-        buffer[in].size = nBytesRead;
-
-        in = (in + 1) % sizeBuffer;
-        elementsInBuffer++;
+        buffer[in] = value;
+        in = (in + 1) % bufferSize;
+        count++;
 
         pthread_cond_signal(&notEmpty);
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&mutexBuffer);
     }
-
-    pthread_mutex_lock(&mutex);
-    producers_finished++;
-    pthread_cond_broadcast(&notEmpty);
-    pthread_mutex_unlock(&mutex);
-
-    return NULL;
 }
 
 void *consumer(void *arg)
 {
-    while(1)
+    while (1)
     {
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&mutexBuffer);
 
-        while(elementsInBuffer == 0 && producers_finished < Nprod)
-            pthread_cond_wait(&notEmpty, &mutex);
+        while (count == 0 && !producers_finished)
+            pthread_cond_wait(&notEmpty, &mutexBuffer);
 
-        if(elementsInBuffer == 0 && producers_finished == Nprod)
+        if (count == 0 && producers_finished)
         {
-            pthread_mutex_unlock(&mutex);
-            break;
+            pthread_mutex_unlock(&mutexBuffer);
+            return NULL;
         }
 
-        unsigned char *data = buffer[out].data;
-        int dataSize = buffer[out].size;
-
-        out = (out + 1) % sizeBuffer;
-        elementsInBuffer--;
+        int value = buffer[out];
+        out = (out + 1) % bufferSize;
+        count--;
 
         pthread_cond_signal(&notFull);
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&mutexBuffer);
 
-        pthread_mutex_lock(&hist_mutex);
-
-        for(int i = 0; i < dataSize; i++)
-            histogram[data[i]]++;
-
-        pthread_mutex_unlock(&hist_mutex);
-
-        free(data);
+        pthread_mutex_lock(&mutexHist);
+        histogram[value]++;
+        pthread_mutex_unlock(&mutexHist);
     }
-
-    return NULL;
 }
 
 int main(int argc, char *argv[])
 {
-    if(argc != 6)
+    if (argc != 6)
     {
-        printf("Usage: computeHistogram input.pgm output.txt Nprod Ncons sizeBuffer\n");
+        printf("Usage:\n");
+        printf("./computeHistogram image.pgm output.txt producers consumers bufferSize\n");
         return 1;
     }
 
     char *input = argv[1];
     char *output = argv[2];
+    int producers = atoi(argv[3]);
+    int consumers = atoi(argv[4]);
+    bufferSize = atoi(argv[5]);
 
-    Nprod = atoi(argv[3]);
-    int Ncons = atoi(argv[4]);
-    sizeBuffer = atoi(argv[5]);
+    FILE *f = fopen(input, "rb");
+    if (!f)
+    {
+        printf("Error opening image\n");
+        return 1;
+    }
 
+    char format[3];
     int width, height, maxval;
 
-    int header = parse_pgm_header(input, &width, &height, &maxval);
+    fscanf(f, "%s", format);
+    fscanf(f, "%d %d", &width, &height);
+    fscanf(f, "%d", &maxval);
+    fgetc(f);
 
-    if(header < 0)
-    {
-        printf("Error reading PGM header\n");
-        return 1;
-    }
+    imageSize = width * height;
+    image = malloc(imageSize);
 
-    fd = open(input, O_RDONLY);
-
-    if(fd < 0)
-    {
-        perror("open");
-        return 1;
-    }
-
-    readPos = header;
-    endPos = header + (width * height);
-
-    buffer = malloc(sizeof(block_t) * sizeBuffer);
-
-    if(buffer == NULL)
-    {
-        perror("malloc");
-        return 1;
-    }
-
-    pthread_t producers[Nprod];
-    pthread_t consumers[Ncons];
-
-    for(int i = 0; i < Nprod; i++)
-        pthread_create(&producers[i], NULL, producer, NULL);
-
-    for(int i = 0; i < Ncons; i++)
-        pthread_create(&consumers[i], NULL, consumer, NULL);
-
-    for(int i = 0; i < Nprod; i++)
-        pthread_join(producers[i], NULL);
-
-    for(int i = 0; i < Ncons; i++)
-        pthread_join(consumers[i], NULL);
-
-    FILE *f = fopen(output, "w");
-
-    for(int i = 0; i < HIST_SIZE; i++)
-        fprintf(f, "%d,%d\n", i, histogram[i]);
-
+    fread(image, 1, imageSize, f);
     fclose(f);
 
+    buffer = malloc(sizeof(int) * bufferSize);
+
+    for (int i = 0; i < HIST_SIZE; i++)
+        histogram[i] = 0;
+
+    pthread_mutex_init(&mutexBuffer, NULL);
+    pthread_mutex_init(&mutexHist, NULL);
+    pthread_cond_init(&notFull, NULL);
+    pthread_cond_init(&notEmpty, NULL);
+
+    pthread_t prod[producers];
+    pthread_t cons[consumers];
+
+    for (int i = 0; i < producers; i++)
+        pthread_create(&prod[i], NULL, producer, NULL);
+
+    for (int i = 0; i < consumers; i++)
+        pthread_create(&cons[i], NULL, consumer, NULL);
+
+    for (int i = 0; i < producers; i++)
+        pthread_join(prod[i], NULL);
+
+    for (int i = 0; i < consumers; i++)
+        pthread_join(cons[i], NULL);
+
+    FILE *outFile = fopen(output, "w");
+
+    for (int i = 0; i < 255; i++)
+        fprintf(outFile, "%d,%d\n", i, histogram[i]);
+
+    fclose(outFile);
+
+    free(image);
     free(buffer);
-    close(fd);
+
+    pthread_mutex_destroy(&mutexBuffer);
+    pthread_mutex_destroy(&mutexHist);
+    pthread_cond_destroy(&notFull);
+    pthread_cond_destroy(&notEmpty);
 
     return 0;
 }
