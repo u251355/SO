@@ -1,13 +1,6 @@
-/*
- * Productor‑Consumidor para imagen PGM
- * Compilar: gcc -pthread -o prodcons prodcons.c
- * Uso: ./prodcons imagen.pgm salida.txt productores consumidores tam_buffer
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-
 #define BLOCK_SIZE 16384
 
 typedef struct {
@@ -32,7 +25,6 @@ pthread_cond_t notEmpty = PTHREAD_COND_INITIALIZER;
 // Histograma global
 pthread_mutex_t hist_mutex = PTHREAD_MUTEX_INITIALIZER;
 int histogram[256] = {0};
-
 void *producer(void *arg) {
     while (1) {
         // Reservar memoria para un nuevo bloque
@@ -41,7 +33,6 @@ void *producer(void *arg) {
             perror("malloc");
             pthread_exit(NULL);
         }
-
         // Leer del archivo (protegido con mutex)
         pthread_mutex_lock(&file_mutex);
         blk->size = fread(blk->data, 1, BLOCK_SIZE, file);
@@ -49,7 +40,6 @@ void *producer(void *arg) {
             // EOF: no hay más datos
             free(blk);
             pthread_mutex_unlock(&file_mutex);
-
             // Decrementar contador de productores activos
             pthread_mutex_lock(&buffer_mutex);
             active_producers--;
@@ -61,7 +51,6 @@ void *producer(void *arg) {
             pthread_exit(NULL);
         }
         pthread_mutex_unlock(&file_mutex);
-
         // Insertar el bloque en el buffer circular
         pthread_mutex_lock(&buffer_mutex);
         while (count == buffer_size) {
@@ -75,7 +64,6 @@ void *producer(void *arg) {
     }
     return NULL;
 }
-
 void *consumer(void *arg) {
     while (1) {
         pthread_mutex_lock(&buffer_mutex);
@@ -94,7 +82,6 @@ void *consumer(void *arg) {
         count--;
         pthread_cond_signal(&notFull);
         pthread_mutex_unlock(&buffer_mutex);
-
         // Procesar el bloque: actualizar histograma
         pthread_mutex_lock(&hist_mutex);
         for (int i = 0; i < blk->size; i++) {
@@ -112,36 +99,30 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Uso: %s imagen.pgm salida.txt productores consumidores tam_buffer\n", argv[0]);
         return 1;
     }
-
     char *input_file = argv[1];
     char *output_file = argv[2];
     int num_producers = atoi(argv[3]);
     int num_consumers = atoi(argv[4]);
     buffer_size = atoi(argv[5]);
-
     if (num_producers <= 0 || num_consumers <= 0 || buffer_size <= 0) {
         fprintf(stderr, "Los números deben ser positivos.\n");
         return 1;
     }
-
     // Abrir archivo de imagen en modo binario
     file = fopen(input_file, "rb");
     if (!file) {
         perror("fopen");
         return 1;
     }
-
     // ---- Leer cabecera PGM ----
     char format[3];
     int width, height, maxval;
-
     // Formato (P5, etc.)
     if (fscanf(file, "%2s", format) != 1) {
         fprintf(stderr, "Error leyendo formato PGM\n");
         fclose(file);
         return 1;
     }
-
     // Saltar posibles comentarios (líneas que empiezan con '#')
     int c;
     while ((c = fgetc(file)) == '#') {
@@ -155,19 +136,16 @@ int main(int argc, char *argv[]) {
         fclose(file);
         return 1;
     }
-
     // Leer valor máximo
     if (fscanf(file, "%d", &maxval) != 1) {
         fprintf(stderr, "Error leyendo maxval\n");
         fclose(file);
         return 1;
     }
-
     // Saltar el salto de línea después del maxval
     fgetc(file);
     // A partir de aquí el puntero está al inicio de los datos de píxeles
     // ---------------------------------
-
     // Inicializar buffer
     buffer = malloc(sizeof(block_t *) * buffer_size);
     if (!buffer) {
@@ -175,9 +153,7 @@ int main(int argc, char *argv[]) {
         fclose(file);
         return 1;
     }
-
     active_producers = num_producers;
-
     pthread_t *producers = malloc(sizeof(pthread_t) * num_producers);
     pthread_t *consumers = malloc(sizeof(pthread_t) * num_consumers);
     if (!producers || !consumers) {
@@ -186,7 +162,6 @@ int main(int argc, char *argv[]) {
         fclose(file);
         return 1;
     }
-
     // Crear hilos productores
     for (int i = 0; i < num_producers; i++) {
         if (pthread_create(&producers[i], NULL, producer, NULL) != 0) {
@@ -194,7 +169,6 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
     }
-
     // Crear hilos consumidores
     for (int i = 0; i < num_consumers; i++) {
         if (pthread_create(&consumers[i], NULL, consumer, NULL) != 0) {
@@ -202,17 +176,14 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
     }
-
     // Esperar a que terminen todos los productores
     for (int i = 0; i < num_producers; i++) {
         pthread_join(producers[i], NULL);
     }
-
     // Esperar a que terminen todos los consumidores
     for (int i = 0; i < num_consumers; i++) {
         pthread_join(consumers[i], NULL);
     }
-
     // Escribir el histograma en el archivo de salida
     FILE *out = fopen(output_file, "w");
     if (!out) {
@@ -224,12 +195,10 @@ int main(int argc, char *argv[]) {
         }
         fclose(out);
     }
-
     // Liberar recursos
     free(producers);
     free(consumers);
     free(buffer);
     fclose(file);
-
     return 0;
 }
