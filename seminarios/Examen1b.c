@@ -17,7 +17,7 @@ int main(int argc, char*argv[]){
   pipe(fd2);
   pid_t pid = fork(); //hijo 1
 
-  if(pid!=0){
+  if(pid!=0){//padre
     close(fd1[0]);
     close(fd2[0]);
     close(fd2[1]);
