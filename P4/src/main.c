@@ -15,6 +15,7 @@ typedef struct {
 
 block_t *buffer;
 int sizeBuffer;
+
 int in = 0;
 int out = 0;
 int elementsInBuffer = 0;
@@ -31,61 +32,45 @@ pthread_mutex_t hist_mutex = PTHREAD_MUTEX_INITIALIZER;
 int producers_finished = 0;
 int Nprod;
 
-int readPos;
+off_t readPos;
 int blockSize = BLOCK_SIZE;
-int imageSize;
-int headerSize;
 
+int fd;
 char *inputFile;
 
-void *Producer(void *arg)
+void *producer(void *arg)
 {
-    int fd = open(inputFile, O_RDONLY);
-
-    if(fd < 0)
-    {
-        perror("open");
-        return NULL;
-    }
-
+    int blockSize = *((int *)arg);
     int nBytesRead;
-    int readPosLocal;
+    off_t readPosLocal;
 
     while(1)
     {
         pthread_mutex_lock(&lock_read);
-
-        if(readPos >= headerSize + imageSize)
-        {
-            pthread_mutex_unlock(&lock_read);
-            break;
-        }
-
         readPosLocal = readPos;
         readPos += blockSize;
-
         pthread_mutex_unlock(&lock_read);
 
         lseek(fd, readPosLocal, SEEK_SET);
 
-        int bytesToRead = blockSize;
-
-        if(readPosLocal + blockSize > headerSize + imageSize)
-            bytesToRead = (headerSize + imageSize) - readPosLocal;
-
-        unsigned char *buff = malloc(bytesToRead);
-
+        unsigned char *buff = malloc(blockSize);
         if(buff == NULL)
         {
             perror("malloc");
-            close(fd);
-            return NULL;
+            exit(1);
         }
 
-        nBytesRead = read(fd, buff, bytesToRead);
+        nBytesRead = read(fd, buff, blockSize);
 
-        if(nBytesRead <= 0)
+        if(nBytesRead == 0)
         {
+            free(buff);
+            break;
+        }
+
+        if(nBytesRead < 0)
+        {
+            perror("read");
             free(buff);
             break;
         }
@@ -102,20 +87,14 @@ void *Producer(void *arg)
         elementsInBuffer++;
 
         pthread_cond_signal(&notEmpty);
-
         pthread_mutex_unlock(&mutex);
     }
 
     pthread_mutex_lock(&mutex);
-
     producers_finished++;
-
-    if(producers_finished == Nprod)
-        pthread_cond_broadcast(&notEmpty);
-
+    pthread_cond_broadcast(&notEmpty);
     pthread_mutex_unlock(&mutex);
 
-    close(fd);
     return NULL;
 }
 
@@ -141,12 +120,11 @@ void *Consumer(void *arg)
         elementsInBuffer--;
 
         pthread_cond_signal(&notFull);
-
         pthread_mutex_unlock(&mutex);
 
         pthread_mutex_lock(&hist_mutex);
 
-        for(int i=0;i<dataSize;i++)
+        for(int i = 0; i < dataSize; i++)
             histogram[data[i]]++;
 
         pthread_mutex_unlock(&hist_mutex);
@@ -170,7 +148,6 @@ int main(int argc, char *argv[])
 
     Nprod = atoi(argv[3]);
     int Ncons = atoi(argv[4]);
-
     sizeBuffer = atoi(argv[5]);
 
     int width, height, maxval;
@@ -183,8 +160,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    headerSize = header;
-    imageSize = width * height;
+    fd = open(inputFile, O_RDONLY);
+
+    if(fd < 0)
+    {
+        perror("open");
+        return 1;
+    }
 
     readPos = header;
 
@@ -199,19 +181,19 @@ int main(int argc, char *argv[])
     pthread_t producers[Nprod];
     pthread_t consumers[Ncons];
 
-    for(int i=0;i<Nprod;i++)
-        pthread_create(&producers[i], NULL, Producer, NULL);
+    for(int i = 0; i < Nprod; i++)
+        pthread_create(&producers[i], NULL, producer, &blockSize);
 
-    for(int i=0;i<Ncons;i++)
+    for(int i = 0; i < Ncons; i++)
         pthread_create(&consumers[i], NULL, Consumer, NULL);
 
-    for(int i=0;i<Nprod;i++)
+    for(int i = 0; i < Nprod; i++)
         pthread_join(producers[i], NULL);
 
-    for(int i=0;i<Ncons;i++)
+    for(int i = 0; i < Ncons; i++)
         pthread_join(consumers[i], NULL);
 
-    FILE *f = fopen(output,"w");
+    FILE *f = fopen(output, "w");
 
     if(f == NULL)
     {
@@ -219,12 +201,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    for(int i=0;i<256;i++)
-        fprintf(f,"%d %d\n", i, histogram[i]);
+    for(int i = 0; i < 256; i++)
+        fprintf(f, "%d %d\n", i, histogram[i]);
 
     fclose(f);
 
     free(buffer);
+    close(fd);
 
     return 0;
 }
