@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     //Read PGM header
     char format[3];
     int width, height, maxval;
-    if (fscanf(file, "%2s", format) != 1) { //read format (P5, etc.)
+    if (fscanf(file, "%2s", format) != 1) { //read format
         fprintf(stderr, "Error leyendo formato PGM\n"); //Error control
         fclose(file); //close file
         return 1;
