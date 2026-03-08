@@ -4,61 +4,53 @@
 #define BLOCK_SIZE 16384
 
 typedef struct {
-    unsigned char data[BLOCK_SIZE];
-    int size;               // número de bytes realmente leídos
+    unsigned char data[BLOCK_SIZE]; // store bytes read from file
+    int size;              // number of bytes actually read
 } block_t;
 
-// Archivo compartido
-FILE *file;
-pthread_mutex_t file_mutex = PTHREAD_MUTEX_INITIALIZER;
-int active_producers;
-int producers_done = 0;
+FILE *file; // shared file pointer
+pthread_mutex_t file_mutex = PTHREAD_MUTEX_INITIALIZER; // lock for reading file
+int active_producers; // how many producers are running
+int producers_done = 0; // flag all producers finished
 
-// Buffer circular de bloques
-block_t **buffer;
+block_t **buffer; // circular buffer for blocks
 int buffer_size;
-int in = 0, out = 0, count = 0;
-pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t notFull = PTHREAD_COND_INITIALIZER;
-pthread_cond_t notEmpty = PTHREAD_COND_INITIALIZER;
-
-// Histograma global
-pthread_mutex_t hist_mutex = PTHREAD_MUTEX_INITIALIZER;
-int histogram[256] = {0};
+int in = 0, out = 0, count = 0; // indexes and count of blocks
+pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER; // lock for buffer
+pthread_cond_t notFull = PTHREAD_COND_INITIALIZER;  //wait if buffer full
+pthread_cond_t notEmpty = PTHREAD_COND_INITIALIZER; // wait if buffer empty
+// global histogram
+pthread_mutex_t hist_mutex = PTHREAD_MUTEX_INITIALIZER;  //lock for histogram
+int histogram[256] = {0};  // count for each byte
 void *producer(void *arg) {
     while (1) {
-        // Reservar memoria para un nuevo bloque
-        block_t *blk = malloc(sizeof(block_t));
-        if (!blk) {
+        block_t *blk = malloc(sizeof(block_t)); // allocate memory for a block
+        if (!blk) { //error control
             perror("malloc");
             pthread_exit(NULL);
         }
-        // Leer del archivo (protegido con mutex)
-        pthread_mutex_lock(&file_mutex);
-        blk->size = fread(blk->data, 1, BLOCK_SIZE, file);
-        if (blk->size == 0) {
-            // EOF: no hay más datos
+        pthread_mutex_lock(&file_mutex); //lock file for reading
+        blk->size = fread(blk->data, 1, BLOCK_SIZE, file);// read up to 16KB
+        if (blk->size == 0) { // if EOF
             free(blk);
-            pthread_mutex_unlock(&file_mutex);
-            // Decrementar contador de productores activos
+            pthread_mutex_unlock(&file_mutex); // unlock file
             pthread_mutex_lock(&buffer_mutex);
-            active_producers--;
-            if (active_producers == 0) {
+            active_producers--; // decrement running producers
+            if (active_producers == 0) { //if last producer signal all producers done and wake up consumers
                 producers_done = 1;
                 pthread_cond_broadcast(&notEmpty); // despertar consumidores
             }
-            pthread_mutex_unlock(&buffer_mutex);
-            pthread_exit(NULL);
+            pthread_mutex_unlock(&buffer_mutex); //unlock
+            pthread_exit(NULL);//exit thread
         }
         pthread_mutex_unlock(&file_mutex);
-        // Insertar el bloque en el buffer circular
-        pthread_mutex_lock(&buffer_mutex);
-        while (count == buffer_size) {
+        pthread_mutex_lock(&buffer_mutex); // lock buffer to insert block
+        while (count == buffer_size) { // wait if buffer full
             pthread_cond_wait(&notFull, &buffer_mutex);
         }
-        buffer[in] = blk;
-        in = (in + 1) % buffer_size;
-        count++;
+        buffer[in] = blk; // put block in buffer
+        in = (in + 1) % buffer_size; // circular increment
+        count++; //increase counter
         pthread_cond_signal(&notEmpty);
         pthread_mutex_unlock(&buffer_mutex);
     }
