@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     int num_consumers = atoi(argv[4]); //number of consumers
     buffer_size = atoi(argv[5]); // size of the circular buffer.
     if (num_producers <= 0 || num_consumers <= 0 || buffer_size <= 0) { // error control
-        fprintf(stderr, "Los números deben ser positivos.\n");
+        fprintf(stderr, "The numbers must be positive.\n");
         return 1;
     }
     file = fopen(input_file, "rb"); // open image file in binary mode
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     char format[3];
     int width, height, maxval;
     if (fscanf(file, "%2s", format) != 1) { //read format
-        fprintf(stderr, "Error leyendo formato PGM\n"); //Error control
+        fprintf(stderr, "Error reading PGM format\n"); //Error control
         fclose(file); //close file
         return 1;
     }
@@ -115,12 +115,12 @@ int main(int argc, char *argv[]) {
     ungetc(c, file); // put back the last non-comment character
 
     if (fscanf(file, "%d %d", &width, &height) != 2) { // read image dimensions
-        fprintf(stderr, "Error leyendo dimensiones\n"); //Error
+        fprintf(stderr, "Error reading the dimensions\n"); //Error
         fclose(file); //close file
         return 1;
     }
     if (fscanf(file, "%d", &maxval) != 1) { // read maximum value
-        fprintf(stderr, "Error leyendo maxval\n"); //error
+        fprintf(stderr, "Error reading maxval\n"); //error
         fclose(file); //close file
         return 1;
     }
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
 
     buffer = malloc(sizeof(block_t *) * buffer_size); // initialize circular buffer
     if (!buffer) {
-        perror("malloc buffer"); //Error control
+        perror("buffer malloc"); //Error control
         fclose(file);
         return 1;
     }
@@ -139,20 +139,20 @@ int main(int argc, char *argv[]) {
     pthread_t *consumers = malloc(sizeof(pthread_t) * num_consumers); // array of consumer threads
 
     if (!producers || !consumers) { //Error control
-        perror("malloc hilos");
+        perror("threads malloc");
         free(buffer);
         fclose(file);
         return 1;
     }
     for (int i = 0; i < num_producers; i++) { // create producer threads
         if (pthread_create(&producers[i], NULL, producer, NULL) != 0) {
-            perror("pthread_create productor"); //Error control
+            perror("pthread_create producers"); //Error control
             exit(1);
         }
     }
     for (int i = 0; i < num_consumers; i++) { // create consumer threads
         if (pthread_create(&consumers[i], NULL, consumer, NULL) != 0) {
-            perror("pthread_create consumidor"); //Error control
+            perror("pthread_create consumers"); //Error control
             exit(1);
         }
     }
@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
     }
     FILE *out = fopen(output_file, "w"); //write the histogram to the output file
     if (!out) {
-        perror("fopen salida"); //error control
+        perror("out fopen"); //error control
     } else {
         for (int i = 0; i < 255; i++) { //only print values from 0 to 254
             fprintf(out, "%d,%d\n", i, histogram[i]);
