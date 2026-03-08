@@ -33,34 +33,45 @@ int producers_finished = 0;
 int Nprod;
 
 off_t readPos;
-int blockSize = BLOCK_SIZE;
+off_t endPos;
 
 int fd;
-char *inputFile;
 
 void *producer(void *arg)
 {
-    int blockSize = *((int *)arg);
     int nBytesRead;
     off_t readPosLocal;
 
     while(1)
     {
         pthread_mutex_lock(&lock_read);
+
+        if(readPos >= endPos)
+        {
+            pthread_mutex_unlock(&lock_read);
+            break;
+        }
+
         readPosLocal = readPos;
-        readPos += blockSize;
+        readPos += BLOCK_SIZE;
+
         pthread_mutex_unlock(&lock_read);
+
+        int toRead = BLOCK_SIZE;
+
+        if(readPosLocal + toRead > endPos)
+            toRead = endPos - readPosLocal;
 
         lseek(fd, readPosLocal, SEEK_SET);
 
-        unsigned char *buff = malloc(blockSize);
+        unsigned char *buff = malloc(toRead);
         if(buff == NULL)
         {
             perror("malloc");
             exit(1);
         }
 
-        nBytesRead = read(fd, buff, blockSize);
+        nBytesRead = read(fd, buff, toRead);
 
         if(nBytesRead <= 0)
         {
@@ -91,7 +102,7 @@ void *producer(void *arg)
     return NULL;
 }
 
-void *Consumer(void *arg)
+void *consumer(void *arg)
 {
     while(1)
     {
@@ -136,7 +147,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    inputFile = argv[1];
+    char *input = argv[1];
     char *output = argv[2];
 
     Nprod = atoi(argv[3]);
@@ -145,7 +156,7 @@ int main(int argc, char *argv[])
 
     int width, height, maxval;
 
-    int header = parse_pgm_header(inputFile, &width, &height, &maxval);
+    int header = parse_pgm_header(input, &width, &height, &maxval);
 
     if(header < 0)
     {
@@ -153,7 +164,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    fd = open(inputFile, O_RDONLY);
+    fd = open(input, O_RDONLY);
 
     if(fd < 0)
     {
@@ -162,6 +173,7 @@ int main(int argc, char *argv[])
     }
 
     readPos = header;
+    endPos = header + (width * height);
 
     buffer = malloc(sizeof(block_t) * sizeBuffer);
 
@@ -175,10 +187,10 @@ int main(int argc, char *argv[])
     pthread_t consumers[Ncons];
 
     for(int i = 0; i < Nprod; i++)
-        pthread_create(&producers[i], NULL, producer, &blockSize);
+        pthread_create(&producers[i], NULL, producer, NULL);
 
     for(int i = 0; i < Ncons; i++)
-        pthread_create(&consumers[i], NULL, Consumer, NULL);
+        pthread_create(&consumers[i], NULL, consumer, NULL);
 
     for(int i = 0; i < Nprod; i++)
         pthread_join(producers[i], NULL);
@@ -188,14 +200,8 @@ int main(int argc, char *argv[])
 
     FILE *f = fopen(output, "w");
 
-    if(f == NULL)
-    {
-        perror("fopen");
-        return 1;
-    }
-
     for(int i = 0; i < HIST_SIZE; i++)
-        fprintf(f, "%d,%d\n", i, histogram[i]);   // FORMATO CORRECTO
+        fprintf(f, "%d,%d\n", i, histogram[i]);
 
     fclose(f);
 
