@@ -15,42 +15,41 @@ int out = 0;
 int count = 0;
 
 int nextPixel = 0;
-
 int producers_finished = 0;
 
 int histogram[HIST_SIZE];
 
-pthread_mutex_t mutexBuffer;
-pthread_mutex_t mutexHist;
-pthread_cond_t notFull;
-pthread_cond_t notEmpty;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexHist = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_cond_t notFull = PTHREAD_COND_INITIALIZER;
+pthread_cond_t notEmpty = PTHREAD_COND_INITIALIZER;
 
 void *producer(void *arg)
 {
     while (1)
     {
-        pthread_mutex_lock(&mutexBuffer);
+        pthread_mutex_lock(&mutex);
 
         if (nextPixel >= imageSize)
         {
             producers_finished = 1;
             pthread_cond_broadcast(&notEmpty);
-            pthread_mutex_unlock(&mutexBuffer);
+            pthread_mutex_unlock(&mutex);
             return NULL;
         }
 
         while (count == bufferSize)
-            pthread_cond_wait(&notFull, &mutexBuffer);
+            pthread_cond_wait(&notFull, &mutex);
 
-        int value = image[nextPixel];
-        nextPixel++;
-
+        int value = image[nextPixel++];
         buffer[in] = value;
+
         in = (in + 1) % bufferSize;
         count++;
 
         pthread_cond_signal(&notEmpty);
-        pthread_mutex_unlock(&mutexBuffer);
+        pthread_mutex_unlock(&mutex);
     }
 }
 
@@ -58,14 +57,14 @@ void *consumer(void *arg)
 {
     while (1)
     {
-        pthread_mutex_lock(&mutexBuffer);
+        pthread_mutex_lock(&mutex);
 
         while (count == 0 && !producers_finished)
-            pthread_cond_wait(&notEmpty, &mutexBuffer);
+            pthread_cond_wait(&notEmpty, &mutex);
 
         if (count == 0 && producers_finished)
         {
-            pthread_mutex_unlock(&mutexBuffer);
+            pthread_mutex_unlock(&mutex);
             return NULL;
         }
 
@@ -74,7 +73,7 @@ void *consumer(void *arg)
         count--;
 
         pthread_cond_signal(&notFull);
-        pthread_mutex_unlock(&mutexBuffer);
+        pthread_mutex_unlock(&mutex);
 
         pthread_mutex_lock(&mutexHist);
         histogram[value]++;
@@ -100,7 +99,7 @@ int main(int argc, char *argv[])
     FILE *f = fopen(input, "rb");
     if (!f)
     {
-        printf("Error opening image\n");
+        printf("Error opening file\n");
         return 1;
     }
 
@@ -122,11 +121,6 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < HIST_SIZE; i++)
         histogram[i] = 0;
-
-    pthread_mutex_init(&mutexBuffer, NULL);
-    pthread_mutex_init(&mutexHist, NULL);
-    pthread_cond_init(&notFull, NULL);
-    pthread_cond_init(&notEmpty, NULL);
 
     pthread_t prod[producers];
     pthread_t cons[consumers];
@@ -152,11 +146,6 @@ int main(int argc, char *argv[])
 
     free(image);
     free(buffer);
-
-    pthread_mutex_destroy(&mutexBuffer);
-    pthread_mutex_destroy(&mutexHist);
-    pthread_cond_destroy(&notFull);
-    pthread_cond_destroy(&notEmpty);
 
     return 0;
 }
