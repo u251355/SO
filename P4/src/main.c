@@ -62,15 +62,8 @@ void *producer(void *arg)
 
         nBytesRead = read(fd, buff, blockSize);
 
-        if(nBytesRead == 0)
+        if(nBytesRead <= 0)
         {
-            free(buff);
-            break;
-        }
-
-        if(nBytesRead < 0)
-        {
-            perror("read");
             free(buff);
             break;
         }
@@ -201,8 +194,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    for(int i = 0; i < 256; i++)
-        fprintf(f, "%d %d\n", i, histogram[i]);
+    for(int i = 0; i < HIST_SIZE; i++)
+        fprintf(f, "%d,%d\n", i, histogram[i]);   // FORMATO CORRECTO
 
     fclose(f);
 
