@@ -82,107 +82,97 @@ void *consumer(void *arg) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 6) {
+    if (argc != 6) { //check if we have exactly 5 arguments
         fprintf(stderr, "Use: %s image.pgm output.txt producers consumers tam_buffer\n", argv[0]); 
         return 1;
     }
-    char *input_file = argv[1];
-    char *output_file = argv[2];
-    int num_producers = atoi(argv[3]);
-    int num_consumers = atoi(argv[4]);
-    buffer_size = atoi(argv[5]);
-    if (num_producers <= 0 || num_consumers <= 0 || buffer_size <= 0) {
+    char *input_file = argv[1]; // input file
+    char *output_file = argv[2]; //output file
+    int num_producers = atoi(argv[3]); //number of producers
+    int num_consumers = atoi(argv[4]); //number of consumers
+    buffer_size = atoi(argv[5]); // size of the circular buffer.
+    if (num_producers <= 0 || num_consumers <= 0 || buffer_size <= 0) { // error control
         fprintf(stderr, "Los números deben ser positivos.\n");
         return 1;
     }
-    // Abrir archivo de imagen en modo binario
-    file = fopen(input_file, "rb");
-    if (!file) {
+    file = fopen(input_file, "rb"); // open image file in binary mode
+    if (!file) { //error control
         perror("fopen");
         return 1;
     }
-    // ---- Leer cabecera PGM ----
+    //Read PGM header
     char format[3];
     int width, height, maxval;
-    // Formato (P5, etc.)
-    if (fscanf(file, "%2s", format) != 1) {
-        fprintf(stderr, "Error leyendo formato PGM\n");
-        fclose(file);
+    if (fscanf(file, "%2s", format) != 1) { //read format (P5, etc.)
+        fprintf(stderr, "Error leyendo formato PGM\n"); //Error control
+        fclose(file); //close file
         return 1;
     }
-    // Saltar posibles comentarios (líneas que empiezan con '#')
     int c;
-    while ((c = fgetc(file)) == '#') {
-        while (fgetc(file) != '\n'); // saltar línea completa
+    while ((c = fgetc(file)) == '#') { // skip possible comment lines starting with '#'
+        while (fgetc(file) != '\n'); // skip entire comment line
     }
-    ungetc(c, file); // devolver el carácter leído (que no es '#')
+    ungetc(c, file); // put back the last non-comment character
 
-    // Leer dimensiones
-    if (fscanf(file, "%d %d", &width, &height) != 2) {
-        fprintf(stderr, "Error leyendo dimensiones\n");
-        fclose(file);
+    if (fscanf(file, "%d %d", &width, &height) != 2) { // read image dimensions
+        fprintf(stderr, "Error leyendo dimensiones\n"); //Error
+        fclose(file); //close file
         return 1;
     }
-    // Leer valor máximo
-    if (fscanf(file, "%d", &maxval) != 1) {
-        fprintf(stderr, "Error leyendo maxval\n");
-        fclose(file);
+    if (fscanf(file, "%d", &maxval) != 1) { // read maximum value
+        fprintf(stderr, "Error leyendo maxval\n"); //error
+        fclose(file); //close file
         return 1;
     }
-    // Saltar el salto de línea después del maxval
-    fgetc(file);
-    // A partir de aquí el puntero está al inicio de los datos de píxeles
-    // ---------------------------------
-    // Inicializar buffer
-    buffer = malloc(sizeof(block_t *) * buffer_size);
+
+    fgetc(file); // skip newline after maxval
+
+    buffer = malloc(sizeof(block_t *) * buffer_size); // initialize circular buffer
     if (!buffer) {
-        perror("malloc buffer");
+        perror("malloc buffer"); //Error control
         fclose(file);
         return 1;
     }
-    active_producers = num_producers;
-    pthread_t *producers = malloc(sizeof(pthread_t) * num_producers);
-    pthread_t *consumers = malloc(sizeof(pthread_t) * num_consumers);
-    if (!producers || !consumers) {
+    active_producers = num_producers; // initialize active producers counter
+
+    pthread_t *producers = malloc(sizeof(pthread_t) * num_producers); // array of producer threads
+    pthread_t *consumers = malloc(sizeof(pthread_t) * num_consumers); // array of consumer threads
+
+    if (!producers || !consumers) { //Error control
         perror("malloc hilos");
         free(buffer);
         fclose(file);
         return 1;
     }
-    // Crear hilos productores
-    for (int i = 0; i < num_producers; i++) {
+    for (int i = 0; i < num_producers; i++) { // create producer threads
         if (pthread_create(&producers[i], NULL, producer, NULL) != 0) {
-            perror("pthread_create productor");
+            perror("pthread_create productor"); //Error control
             exit(1);
         }
     }
-    // Crear hilos consumidores
-    for (int i = 0; i < num_consumers; i++) {
+    for (int i = 0; i < num_consumers; i++) { // create consumer threads
         if (pthread_create(&consumers[i], NULL, consumer, NULL) != 0) {
-            perror("pthread_create consumidor");
+            perror("pthread_create consumidor"); //Error control
             exit(1);
         }
     }
-    // Esperar a que terminen todos los productores
-    for (int i = 0; i < num_producers; i++) {
+    
+    for (int i = 0; i < num_producers; i++) { // wait until all the producers are finished
         pthread_join(producers[i], NULL);
     }
-    // Esperar a que terminen todos los consumidores
-    for (int i = 0; i < num_consumers; i++) {
+    for (int i = 0; i < num_consumers; i++) {// wait until all the consumers are finished
         pthread_join(consumers[i], NULL);
     }
-    // Escribir el histograma en el archivo de salida
-    FILE *out = fopen(output_file, "w");
+    FILE *out = fopen(output_file, "w"); //write the histogram to the output file
     if (!out) {
-        perror("fopen salida");
+        perror("fopen salida"); //error control
     } else {
-        // Solo se imprimen los valores 0..254 (como en el ejemplo proporcionado)
-        for (int i = 0; i < 255; i++) {
+        for (int i = 0; i < 255; i++) { //only print values from 0 to 254
             fprintf(out, "%d,%d\n", i, histogram[i]);
         }
-        fclose(out);
+        fclose(out); //close file
     }
-    // Liberar recursos
+    // Free memories
     free(producers);
     free(consumers);
     free(buffer);
