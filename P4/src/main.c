@@ -51,44 +51,39 @@ void *producer(void *arg) {
         buffer[in] = blk; // put block in buffer
         in = (in + 1) % buffer_size; // circular increment
         count++; //increase counter
-        pthread_cond_signal(&notEmpty);
+        pthread_cond_signal(&notEmpty); // signal consumer
         pthread_mutex_unlock(&buffer_mutex);
     }
     return NULL;
 }
 void *consumer(void *arg) {
     while (1) {
-        pthread_mutex_lock(&buffer_mutex);
-        // Esperar mientras no haya datos y los productores sigan activos
-        while (count == 0 && !producers_done) {
+        pthread_mutex_lock(&buffer_mutex);  // lock buffer to take block
+        while (count == 0 && !producers_done) {  // wait if buffer empty and producers still working
             pthread_cond_wait(&notEmpty, &buffer_mutex);
         }
-        // Si no hay datos y todos los productores han terminado, salir
-        if (count == 0 && producers_done) {
+        if (count == 0 && producers_done) { // if empty and all done
             pthread_mutex_unlock(&buffer_mutex);
-            pthread_exit(NULL);
+            pthread_exit(NULL);  //exit thread
         }
-        // Extraer un bloque del buffer
-        block_t *blk = buffer[out];
-        out = (out + 1) % buffer_size;
-        count--;
+        block_t *blk = buffer[out]; // take block from buffer
+        out = (out + 1) % buffer_size;  //circular increment
+        count--; //decrease block count
         pthread_cond_signal(&notFull);
         pthread_mutex_unlock(&buffer_mutex);
-        // Procesar el bloque: actualizar histograma
         pthread_mutex_lock(&hist_mutex);
-        for (int i = 0; i < blk->size; i++) {
-            histogram[blk->data[i]]++;
+        for (int i = 0; i < blk->size; i++) {  //for each byte in block
+            histogram[blk->data[i]]++;  //update histogram
         }
-        pthread_mutex_unlock(&hist_mutex);
-
-        free(blk);
+        pthread_mutex_unlock(&hist_mutex);  // unlock histogram
+        free(blk); //free block memory
     }
     return NULL;
 }
 
 int main(int argc, char *argv[]) {
     if (argc != 6) {
-        fprintf(stderr, "Uso: %s imagen.pgm salida.txt productores consumidores tam_buffer\n", argv[0]);
+        fprintf(stderr, "Use: %s image.pgm output.txt producers consumers tam_buffer\n", argv[0]); 
         return 1;
     }
     char *input_file = argv[1];
