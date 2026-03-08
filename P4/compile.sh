@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc -o histogram src/main.c -lpthread
+gcc -o histogram main.c -lpthread
