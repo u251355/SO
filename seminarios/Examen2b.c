@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include<pthread.h>
+#include<semaphore.h>
 int sum=0;//global pq se necesita tmb en el codigo del thread
 pthread_mutex_t lock;//esto siempre fuera
 sem_t sem;//siempre fuera tambien
@@ -16,9 +17,9 @@ void* sumation(void *arg){ //codigo del thread
     pthread_mutex_lock(&lock);
    sum=sum+c;
    pthread_mutex_unlock(&lock);
+    sem_signal(&sem);//indica que ya esta
    }
    close(fd);
-   sem_signal(&sem);//indica que ya esta
    return NULL;
 }
 
