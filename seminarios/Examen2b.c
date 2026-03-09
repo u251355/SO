@@ -6,7 +6,7 @@
 #include<semaphore.h>
 int sum=0;//global pq se necesita tmb en el codigo del thread
 pthread_mutex_t lock;//esto siempre fuera
-sem_t sem;//siempre fuera tambien
+Semaphore sem;//siempre fuera tambien
 void* sumation(void *arg){ //codigo del thread
     char *file = (char*) arg; //SIEMPRE
    int fd= open(file,O_RDONLY,0644);
