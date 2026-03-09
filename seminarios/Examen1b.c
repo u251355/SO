@@ -31,11 +31,12 @@ int main(int argc, char*argv[]){
   }
 close(ar);
 close(fd1[1]);
+  }
 if (pid ==0){ //el hijo crea otro hijo
     pid_t pid2= fork();//hijo 2
     close(fd1[1]);
     char c;
-    read( fd1[0], &c, 1);
+    read(fd1[0], &c, 1);
     unsigned char filtrada = is_printable(c);
     close(fd2[0]);
     write(fd2[1], &filtrada,1);
