@@ -7,42 +7,42 @@
 int eog=0;
 int main(int argc, char*argv[]){
 int fd[2];
+int fd2[2];
 pipe(fd);
+pipe(fd2);
+int number;
 pid_t pid = fork();
 while(eog!=1){
 if (pid==0){ //hijo
     close(fd[1]);
-    read(fd[0], &number,1);
-    if(number == getpid() mod 100){//compara con su pid
+    close(fd2[0]);
+    read(fd[0], &number,sizeof(int));
+    if(number == getpid() % 100){//compara con su pid
     close(fd[0]);//cierra para decir que ya ha acabado
-    close(fd[1]);
     eog=1;
     }
     else{
-    write(fd[1],0,1);//escribe 0 si ha perdido
+    close(fd2[0]);
+    int z=0;
+    write(fd2[1],&z,sizeof(int));//escribe 0 si ha perdido
     }
 
     }
 else{ //el padre
-    int number = rand() % 100;
-    if (number==getppid() mod 100){ //compara con su pid y si es igual cierra las pipes
+    number= rand() % 100;
+    close(fd2[1]);
+    close(fd[0]);
+    if (number==getpid() % 100){ //compara con su pid y si es igual cierra las pipes
     close(fd[1]);
     close(fd[0]);
     eog=1;
     }
-    else: 
-    write(fd[1],&number, 1);//si ha perdido se lo pasa al hijo
+    else{
+        int z;
+    write(fd[1],&number, sizeof(int));//si ha perdido se lo pasa al hijo
+    read(fd2[0], &z, sizeof(int));
     }
+}
+}
 wait(NULL);
-}
-
-}
-
-
-
-
-
-
-
-
 }
