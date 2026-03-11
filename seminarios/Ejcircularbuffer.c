@@ -89,24 +89,25 @@ buffer_init(&cb, 100);
     while((bytes=read(fd,buffer,100))>0){//mientras este leyendo algo, lo va guardando en el buffer
         for(int i=0; i<bytes;i++){
         if (buffer_free_bytes(&cb)==0){ //si no queda espacio libre en el cb
-              int next = buffer_size_next_element(&cb, `;´, 0) ; //miramos cuanto mide el siguiente elemento
+              int next = buffer_size_next_element(&cb, ';', 0) ; //miramos cuanto mide el siguiente elemento hasta el ;
               if (next == -1){ //si -1 error
                 _exit(1);
               }
             extract_from_circular(&cb,s,next);
             int num= atoi(s);
         }
-     buffer_push(&cb, buffer[i])//si si queda espacio lo metemos en el cb desde el buffer
+     buffer_push(&cb, buffer[i])//si si queda espacio lo metemos en el cb desde el buffer que hemos leido
     }
 }
      char s1[80];
      int nb;
-     while( nb= buffer_size_next_element(&cb, ;, 1) !=-1){
+     while( nb= buffer_size_next_element(&cb, ;, 1) !=-1){ //mieyras no haya error pero ha acabado de leer
         extract_from_circular(&cb,s1, nb);
+        int num = atoi(s1);
      }
     } 
 
-    int extract_from_circular( CircularBuffer* cb, char *s, int nBytes) {
+    void extract_from_circular( CircularBuffer* cb, char *s, int nBytes) {
         for (int i=0; i<nBytes;i++){
             s[i] = buffer_pop(&cb);
         }
