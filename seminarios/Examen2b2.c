@@ -11,7 +11,7 @@ int fd2[2];
 pipe(fd);
 pipe(fd2);
 int number;
-pid_t pid = fork();
+int pid = fork();
 while(eog!=1){
 if (pid==0){ //hijo
     close(fd[1]);

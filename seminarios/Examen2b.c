@@ -6,7 +6,7 @@
 #include<semaphore.h>
 int sum=0;//global pq se necesita tmb en el codigo del thread
 pthread_mutex_t lock;//esto siempre fuera
-Semaphore sem;//siempre fuera tambien
+Semaphore sem;//siempre fuera tambien, faltaria copiar y pegar el codigo del semaforo para que funcione
 void* sumation(void *arg){ //codigo del thread
     char *file = (char*) arg; //SIEMPRE
    int fd= open(file,O_RDONLY,0644);
@@ -24,7 +24,7 @@ void* sumation(void *arg){ //codigo del thread
 }
 
 int main(int argc, char* argv[]){
-pthread_t threads[32];
+int threads[32];
 pthread_mutex_init(&lock,NULL);//inicializar todo en el main siempre
 sem_init(&sem,2);
 for(int i=0; i<argc; i++){

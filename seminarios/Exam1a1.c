@@ -25,7 +25,7 @@ void*player(void*arg){
 }
 int main(int argc, char* argv){
     int id[10];
-    pthread_t threads[10]; //inicializamos 10 threads
+    int threads[10]; //inicializamos 10 threads
     for (int i=0; i<10;i++){//creamos los threads
         pthread_create(&threads[i], NULL,player,&id[i]);
     }

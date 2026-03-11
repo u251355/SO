@@ -15,7 +15,7 @@ int main(int argc, char*argv[]){
   int fd2[2];
   pipe(fd1);
   pipe(fd2);
-  pid_t pid = fork(); //hijo 1
+  int pid = fork(); //hijo 1
 
   if(pid!=0){//padre
     close(fd1[0]);
@@ -33,7 +33,7 @@ close(ar);
 close(fd1[1]);
   }
 if (pid ==0){ //el hijo crea otro hijo
-    pid_t pid2= fork();//hijo 2
+    int pid2= fork();//hijo 2
     close(fd1[1]);
     char c;
     read(fd1[0], &c, 1);
