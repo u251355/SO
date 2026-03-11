@@ -32,14 +32,14 @@ void* decrement(void* arg){
 
     int main(int argc, char* argv[]){
         pthread_t thread[4]; 
-        pthread_mutex_init(&lock,NULL);
+        pthread_mutex_init(&lock,NULL);//inicializamos el lock
         int c[3] ={1,5,10};
         for (int i=0; i<3;i++){
-            pthread_create(&thread[i],NULL,decrement, &c[i]);
+            pthread_create(&thread[i],NULL,decrement, &c[i]);//creamos los decrement
         }
-       pthread_create(&thread[3], NULL, increment, NULL);
+       pthread_create(&thread[3], NULL, increment, NULL);//creamos en increment
     for (int i=0; i<4;i++){
-            pthread_join(thread[i],NULL);
+            pthread_join(thread[i],NULL);//esperamos a todos
     }
 return 0;
 
