@@ -85,9 +85,9 @@ CircularBuffer cb;
 unsigned char buffer[100];
 buffer_init(&cb, 100);
     int bytes;
-    char s[80];
     while((bytes=read(fd,buffer,100))>0){//mientras este leyendo algo, lo va guardando en el buffer
         for(int i=0; i<bytes;i++){
+            char s[80];
         if (buffer_free_bytes(&cb)==0){ //si no queda espacio libre en el cb
               int next = buffer_size_next_element(&cb, ';', 0) ; //miramos cuanto mide el siguiente elemento hasta el ;
               if (next == -1){ //si -1 error
@@ -101,7 +101,7 @@ buffer_init(&cb, 100);
 }
      char s1[80];
      int nb;
-     while( nb= buffer_size_next_element(&cb, ;, 1) !=-1){ //mieyras no haya error pero ha acabado de leer
+     while( nb= buffer_size_next_element(&cb, ;, 1) != -1){ //mientras no haya error pero ha acabado de leer
         extract_from_circular(&cb,s1, nb);
         int num = atoi(s1);
      }
