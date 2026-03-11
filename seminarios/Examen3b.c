@@ -8,16 +8,16 @@ int bytes;
 char buffer[100];
 char c;
 int i=0;
-int readf(int fd, char*buffer){
-    while( (bytes= read(fd,&c,1))>0){
-        buffer[i]=c;
+int readf(int fd, char*buffer){//FUNCION QUE LEE DEL FILE DESCRIPTOR
+    while( (bytes= read(fd,&c,1))>0){ //mientras lea algo del fichero lo guarda en c
+        buffer[i]=c; //c lo guarda en un array
         i++;
-         if(c == '\0'){
-            int num = atoi(buffer);
+         if(c == '\0'){ //si lo que lee es el final del numero
+            int num = atoi(buffer);//lo transfora a int
             return num;
 }
-
 }
+return 0;
 }
 int main(int argc, char* argv[]){
     char c[100];
