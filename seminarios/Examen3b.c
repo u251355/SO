@@ -18,6 +18,7 @@ int readf(int fd, char*buffer){
 }
 
 }
+}
 int main(int argc, char* argv[]){
     char c[100];
     int fd1[2];
@@ -32,7 +33,7 @@ int main(int argc, char* argv[]){
         close(fd1[0]);
         close(outputf);
     }
-    else{
+    else{ //el padre
         close(fd1[0]);
         int inputf= open(argv[1], O_RDONLY, 0644);
         int r;
