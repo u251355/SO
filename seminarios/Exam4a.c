@@ -9,7 +9,7 @@ int fd[2];
 pipe(fd);//creamos la pipe
 int pid = fork();//creamos al hijo
 if (pid==0){//el hijo
-    close(fd[1]);
+    close(fd[1]);//cerramos ya directamete la escritura
     int numby;
     int sum=0;
     while((numby=read(fd[0], &num, sizeof(int))>0)){
@@ -18,7 +18,7 @@ if (pid==0){//el hijo
        }
     }
     close(fd[0]);
-    write(1,&sum,sizeof(int));
+    write(1,&sum,sizeof(int));//escribimos fuera la suma
 }
 else{//el padre
  close(fd[0]);
