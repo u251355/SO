@@ -16,7 +16,7 @@ typedef struct{ //creas el struct de la particula
 } particle;
 
 
-void *move(void arg){ //funcion del struct
+void *move(void *arg){ //funcion del struct
     particle *p = (particle*)arg; //para castear structs es asi
     int i = p->i;//te guardas tus cositas, porque las necesitas luego
     int j= p->j;
