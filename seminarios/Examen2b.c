@@ -7,17 +7,18 @@
 int sum=0;//global pq se necesita tmb en el codigo del thread
 pthread_mutex_t lock;//esto siempre fuera
 Semaphore sem;//siempre fuera tambien, faltaria copiar y pegar el codigo del semaforo para que funcione
+
 void* sumation(void *arg){ //codigo del thread
-    char *file = (char*) arg; //SIEMPRE
+   char *file = (char*) arg; //SIEMPRE
    int fd= open(file,O_RDONLY,0644);
    int bytes;
    int c;
    sem_wait(&sem);//el semaforo hace esperar
    while(bytes=read(fd,&c, sizeof(int))>0){//siempre pq sino no lo lees todo
-    pthread_mutex_lock(&lock);
-   sum=sum+c;
-   pthread_mutex_unlock(&lock);
-    sem_signal(&sem);//indica que ya esta
+        pthread_mutex_lock(&lock);
+        sum=sum+c;
+        pthread_mutex_unlock(&lock);
+        sem_signal(&sem);//indica que ya esta
    }
    close(fd);
    return NULL;
