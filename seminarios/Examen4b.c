@@ -6,8 +6,8 @@
 #include<semaphore.h>
 pthread_mutex_t lock;//inicializamos el lock fuera de todo
 
-void* increment(void* arg){
-   int i = *(int*)arg;//casteamos
+void* increment(void *arg){
+   int *i = (int*)arg;//casteamos
    pthread_mutex_lock(&lock);
    A[i]= i*1000;
    pthread_mutex_unlock(&lock);
@@ -24,7 +24,7 @@ int main(int argc, char* argv[]){
             pthread_create(&thread[i],NULL, increment, index); //creamos los threads pasandoles el indice
     }
     for (int i=0; i<50;i++){
-            pthread_join(&thread[i], NULL);
+            pthread_join(thread[i], NULL);
     }
 
 }
