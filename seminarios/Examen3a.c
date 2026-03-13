@@ -19,7 +19,7 @@ void* increment(void* a){//te lo dan
 }
 
 void* decrement(void* arg){
-    int value = *(int*)arg; //casteamos el valor
+    int *value = (int*)arg; //casteamos el valor
     while(end==0){ //no se haya acabado el programa
         pthread_mutex_lock(&lock);//bloqueamos
         if(counter>=value){//si se puede restar

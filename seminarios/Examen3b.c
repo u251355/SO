@@ -19,6 +19,7 @@ int readf(int fd, char*buffer){//FUNCION QUE LEE DEL FILE DESCRIPTOR
 }
 return 0;
 }
+
 int main(int argc, char* argv[]){
     char c[100];
     int fd1[2];
