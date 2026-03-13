@@ -9,6 +9,7 @@ unsigned char is_printable(char c) {  // TE LO DAN
  return 0;
  }
 }
+
 char buffer[100];
 int main(int argc, char*argv[]){
   int  fd1[2]; //siempre las pipes antes que los hijos
@@ -25,13 +26,14 @@ int main(int argc, char*argv[]){
   int bytes;
   while( bytes= read(ar,buffer, 1 )>0){//mientras haya algo que leer
      for (bytes i = 0; i < bytes; i++) {
-    write(fd1[1], buffer, 1)//se lo escribe al hijo
+        write(fd1[1], buffer, 1)//se lo escribe al hijo
   }
   wait(NULL);
   }
 close(ar);
 close(fd1[1]);
   }
+  
 if (pid ==0){ //el hijo crea otro hijo
     int pid2= fork();//hijo 2
     close(fd1[1]);

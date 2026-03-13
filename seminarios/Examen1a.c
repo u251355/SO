@@ -14,13 +14,16 @@ void*player(void*arg){
         printf("Player %d wins the round\n", id);
     }
     pthread_mutex_unlock(&lock);//desblouqa
+    free(arg);//porque le has pasado un array
     return NULL;
 }
 int main(int argc, char* argv){
     int id[10];
     pthread_t threads[10]; //inicializamos 10 threads
     for (int i=0; i<10;i++){//creamos los threads
-        pthread_create(&threads[i], NULL,player,&id[i]);
+        int *index= malloc(sizeof(int));//para pasarle a un thread un array
+        *index = i;
+        pthread_create(&threads[i], NULL,player,index); //le pasas index
     }
  for (int i=0; i<10;i++){//creamos los threads
         pthread_join(threads[i], NULL); //esperamos a que todos acaben
